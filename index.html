@@ -4,492 +4,440 @@
   <meta charset="UTF-8" />
   <title>Efootball Tournament Platform by PesPagol</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-
-  <!-- Tailwind CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
 
-  <!-- Tailwind config -->
   <script>
     tailwind.config = {
       theme: {
         extend: {
           colors: {
             brand: {
-              50: '#e6f7ff',
-              100: '#b3ecff',
-              200: '#80e1ff',
-              300: '#4dd5ff',
-              400: '#1ac9ff',   /* electric blue */
-              500: '#00a7e6',
-              600: '#007fb4',
-              700: '#005982',
-              800: '#003251',
-              900: '#001426'
+              100: "#E0F2FE",
+              200: "#BAE6FD",
+              300: "#7DD3FC",
+              400: "#22D3EE",
             },
-            neon: {
-              yellow: '#ffe600'
-            }
           },
           boxShadow: {
-            'brand-glow': '0 0 25px rgba(0,199,255,0.45)',
-            'card-soft': '0 18px 40px rgba(0,0,0,0.55)'
+            "brand-glow": "0 0 35px rgba(34,211,238,0.35)",
           },
-          fontFamily: {
-            sans: ['system-ui', 'Segoe UI', 'sans-serif']
-          }
-        }
-      }
+        },
+      },
     };
   </script>
 
-  <!-- Background + extra styles -->
+  <!-- jsPDF for fixture export -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" defer></script>
+
   <style>
     body {
       font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      min-height: 100vh;
       background:
-        radial-gradient(circle at top left, rgba(26,201,255,0.2), transparent 55%),
-        radial-gradient(circle at bottom right, rgba(255,230,0,0.15), transparent 55%),
-        linear-gradient(135deg, #020617 0%, #020617 40%, #020617 100%),
-        url('bg_efootball.jpg') center/cover no-repeat fixed;
-      background-blend-mode: screen, screen, multiply, normal;
+        radial-gradient(circle at top left, rgba(34,211,238,0.20), transparent 60%),
+        radial-gradient(circle at bottom right, rgba(15,23,42,0.90), #020617),
+        url("bg_efootball.jpg") center/cover fixed no-repeat;
+      color: #e5e7eb;
     }
-
-    .card-hover {
-      transition:
-        transform 0.18s ease-out,
-        box-shadow 0.18s ease-out,
-        border-color 0.18s ease-out,
-        background-color 0.18s ease-out;
+    .glass-panel {
+      backdrop-filter: blur(16px);
+      background: linear-gradient(to bottom right, rgba(15,23,42,0.9), rgba(15,23,42,0.85));
     }
-
-    .card-hover:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 18px 40px rgba(0,0,0,0.6);
-      border-color: rgba(26,201,255,0.4);
-      background-color: rgba(15,23,42,0.96);
-    }
-
     .btn-glow {
-      transition:
-        transform 0.16s ease-out,
-        box-shadow 0.16s ease-out,
-        background-color 0.16s ease-out;
+      box-shadow: 0 0 20px rgba(34,211,238,0.45);
     }
-
-    .btn-glow:hover {
+    .card-hover {
+      transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+    }
+    .card-hover:hover {
       transform: translateY(-1px);
-      box-shadow: 0 0 18px rgba(0,199,255,0.6);
+      box-shadow: 0 18px 35px rgba(15,23,42,0.9);
+      border-color: rgba(148, 163, 184, 0.6);
+      background: rgba(15,23,42,0.95);
     }
-
-    /* Simple loader animation */
-    @keyframes spin {
-      to { transform: rotate(360deg); }
+    .match-updated {
+      animation: pulse-row 0.6s ease-out;
     }
-
-    .loader-ring {
-      width: 40px;
-      height: 40px;
-      border-radius: 999px;
-      border-width: 3px;
-      border-style: solid;
-      border-color: rgba(148,163,184,0.3);
-      border-top-color: #1ac9ff;
-      animation: spin 0.9s linear infinite;
+    @keyframes pulse-row {
+      0% { background-color: rgba(16,185,129,0.15); }
+      100% { background-color: transparent; }
     }
   </style>
 </head>
-<body class="text-slate-50 min-h-screen flex flex-col">
-
-  <!-- GLOBAL LOADER -->
-  <div id="globalLoader"
-       class="hidden fixed inset-0 z-50 bg-slate-950/90 backdrop-blur-md flex flex-col items-center justify-center gap-3">
-    <div class="loader-ring"></div>
-    <p class="text-xs text-slate-300 tracking-wide uppercase">
-      Syncing with PesPagol servers...
-    </p>
+<body class="text-slate-100">
+  <!-- Global loader -->
+  <div id="globalLoader" class="fixed inset-0 flex items-center justify-center bg-slate-950/70 z-40 hidden">
+    <div class="flex flex-col items-center gap-2">
+      <div class="h-8 w-8 border-2 border-brand-400 border-t-transparent rounded-full animate-spin"></div>
+      <p class="text-xs text-slate-300">Syncing with PesPagol cloud…</p>
+    </div>
   </div>
 
-  <!-- TOP NAV -->
-  <nav class="border-b border-slate-800/80 bg-slate-950/80 backdrop-blur-xl sticky top-0 z-30">
-    <div class="max-w-6xl mx-auto px-4 py-2.5 flex items-center justify-between gap-3">
-      <div class="flex items-center gap-2">
-        <div class="relative">
-          <div class="absolute inset-0 rounded-2xl blur-lg bg-brand-400/50 opacity-60"></div>
-          <img src="pespagol_logo.png"
-               alt="PesPagol logo"
-               class="relative w-10 h-10 sm:w-11 sm:h-11 object-contain" />
+  <div class="min-h-screen flex flex-col">
+    <!-- Header -->
+    <header class="w-full border-b border-slate-800/70 bg-slate-950/80 backdrop-blur">
+      <div class="max-w-6xl mx-auto px-3 sm:px-4 py-3 flex items-center justify-between gap-3">
+        <div class="flex items-center gap-2 sm:gap-3 min-w-0">
+          <img src="pespagol_logo.png" alt="PesPagol Logo" class="h-8 w-8 sm:h-10 sm:w-10 rounded-full border border-brand-400/70 bg-slate-900/70 object-cover" />
+          <div class="min-w-0">
+            <h1 class="text-sm sm:text-base md:text-lg font-semibold text-slate-50 truncate">
+              Efootball Tournament Platform by PesPagol
+            </h1>
+            <p id="headerModeTag" class="text-[10px] sm:text-[11px] text-brand-200/80 truncate hidden"></p>
+          </div>
         </div>
-        <div class="flex flex-col leading-tight">
-          <span class="text-xs uppercase tracking-[0.28em] text-slate-400">
-            PesPagol
-          </span>
-          <span class="text-[13px] sm:text-sm font-semibold tracking-tight text-slate-50">
-            Efootball Tournament Platform
-          </span>
+        <div class="flex items-center gap-2 sm:gap-3">
+          <button id="logoutBtn"
+            class="hidden px-3 py-1.5 rounded-full bg-slate-900 border border-slate-700 text-[11px] text-slate-200 hover:bg-slate-800">
+            Sign out
+          </button>
         </div>
       </div>
+    </header>
 
-      <div class="flex items-center gap-3">
-        <span id="headerModeTag"
-              class="hidden sm:inline-flex items-center gap-1 rounded-full border border-slate-700/70 bg-slate-900/80 px-2.5 py-1 text-[10px] text-slate-300">
-        </span>
-        <button id="logoutBtn"
-                class="hidden text-[11px] px-3 py-1.5 rounded-full border border-slate-700 bg-slate-900 hover:bg-slate-800 text-slate-200">
-          Logout
-        </button>
-      </div>
-    </div>
-  </nav>
-
-  <!-- MAIN -->
-  <main class="flex-1 max-w-6xl mx-auto px-4 py-6 sm:py-8">
-
-    <!-- HERO SECTION (organiser, not logged in) -->
-    <section id="heroSection"
-             class="hidden mb-7 sm:mb-10">
-      <div class="grid md:grid-cols-2 gap-6 items-center">
-        <!-- Left: text -->
-        <div class="space-y-3 sm:space-y-4">
-          <div class="inline-flex items-center gap-2 rounded-full border border-brand-400/40 bg-brand-400/10 px-3 py-1">
-            <span class="h-1.5 w-1.5 rounded-full bg-emerald-400"></span>
-            <span class="text-[10px] tracking-[0.25em] uppercase text-brand-200">
-              Efootball · Online & LAN
-            </span>
-          </div>
-          <h1 class="text-2xl sm:text-3xl md:text-4xl font-semibold tracking-tight text-slate-50">
-            Run your next
-            <span class="text-brand-300">Efootball</span> tournament
-            like a pro.
-          </h1>
-          <p class="text-xs sm:text-sm text-slate-300 max-w-md">
-            Create tournaments, share one link, let players or teams book their spots,
-            and track matches & standings — all in one clean esports dashboard.
-          </p>
-
-          <div class="flex flex-wrap items-center gap-3 pt-1">
-            <button id="heroPrimaryBtn"
-                    class="inline-flex items-center gap-2 rounded-full bg-brand-400 hover:bg-brand-300 text-slate-950 font-semibold text-xs sm:text-sm px-4 sm:px-5 py-2 shadow-brand-glow btn-glow">
-              <span>+ Create Tournament</span>
-            </button>
-            <button id="heroSecondaryBtn"
-                    class="inline-flex items-center gap-2 rounded-full border border-slate-700 bg-slate-900/80 hover:bg-slate-800 text-[11px] sm:text-xs text-slate-200 px-4 py-2">
-              <span>View Example Layout</span>
-            </button>
-          </div>
-
-          <div class="flex flex-wrap gap-4 text-[10px] text-slate-400 pt-1">
-            <div class="flex items-center gap-1.5">
-              <span class="h-1.5 w-1.5 rounded-full bg-brand-400"></span>
-              <span>1v1 · 2v2 · 3v3 support</span>
-            </div>
-            <div class="flex items-center gap-1.5">
-              <span class="h-1.5 w-1.5 rounded-full bg-brand-400"></span>
-              <span>League · Knockout · Groups</span>
-            </div>
-            <div class="flex items-center gap-1.5">
-              <span class="h-1.5 w-1.5 rounded-full bg-brand-400"></span>
-              <span>Player/Team join via link</span>
-            </div>
-          </div>
-        </div>
-
-        <!-- Right: glow panel -->
-        <div class="relative">
-          <div class="absolute -inset-4 bg-gradient-to-tr from-brand-400/20 via-slate-900/0 to-neon-yellow/20 blur-2xl opacity-70"></div>
-          <div class="relative bg-slate-950/90 border border-slate-800/80 rounded-3xl p-4 sm:p-5 shadow-card-soft card-hover">
-            <div class="text-[10px] uppercase tracking-[0.20em] text-slate-500 mb-1">
-              Quick glance
-            </div>
-            <div class="flex items-center justify-between mb-3">
+    <main class="flex-1">
+      <div class="max-w-6xl mx-auto px-3 sm:px-4 py-4 sm:py-6 space-y-5 sm:space-y-6">
+        <!-- Hero (organiser only) -->
+        <section id="heroSection" class="glass-panel rounded-3xl border border-slate-800/80 px-4 sm:px-6 py-4 sm:py-5 shadow-xl">
+          <div class="grid md:grid-cols-[3fr,2fr] gap-4 sm:gap-6 items-center">
+            <div class="space-y-3 sm:space-y-4">
+              <div class="inline-flex items-center gap-1.5 rounded-full bg-brand-400/10 border border-brand-400/40 px-2.5 py-1">
+                <span class="h-1.5 w-1.5 rounded-full bg-brand-400 animate-pulse"></span>
+                <span class="text-[10px] sm:text-[11px] text-brand-100">Host PES & eFootball events in minutes</span>
+              </div>
               <div>
-                <div class="text-sm font-semibold text-slate-50">Tournament Snapshot</div>
-                <div class="text-[11px] text-slate-400">Example dashboard overview</div>
-              </div>
-              <span class="text-[11px] text-brand-200 bg-brand-400/10 border border-brand-400/50 rounded-full px-2 py-1">
-                Live style
-              </span>
-            </div>
-            <div class="grid grid-cols-3 gap-2 text-[11px] mb-4">
-              <div class="rounded-xl bg-slate-900/90 border border-slate-800 px-2 py-2">
-                <div class="text-slate-400">Players</div>
-                <div class="text-lg font-semibold text-brand-200">32</div>
-              </div>
-              <div class="rounded-xl bg-slate-900/90 border border-slate-800 px-2 py-2">
-                <div class="text-slate-400">Matches</div>
-                <div class="text-lg font-semibold text-slate-50">48</div>
-              </div>
-              <div class="rounded-xl bg-slate-900/90 border border-slate-800 px-2 py-2">
-                <div class="text-slate-400">Mode</div>
-                <div class="text-[11px] font-semibold text-neon-yellow">Groups + KO</div>
-              </div>
-            </div>
-            <div class="rounded-xl bg-slate-900/90 border border-slate-800 px-3 py-2.5 space-y-1.5">
-              <div class="flex justify-between text-[11px] text-slate-300">
-                <span>Top Player</span><span class="text-brand-200">EFP_GODLIKE</span>
-              </div>
-              <div class="flex justify-between text-[11px] text-slate-300">
-                <span>Current Stage</span><span class="text-slate-100">Group Stage · R3</span>
-              </div>
-              <div class="flex justify-between text-[11px] text-slate-300">
-                <span>Next Fixture</span><span class="text-slate-100">Tonight · 9:30 PM</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- AUTH SECTION -->
-    <section id="authSection"
-             class="hidden max-w-md mx-auto bg-slate-950/90 border border-slate-800/80 rounded-2xl shadow-card-soft p-5 sm:p-6 card-hover">
-      <div class="flex items-center justify-between mb-4">
-        <div>
-          <h2 class="text-lg font-semibold tracking-tight flex items-center gap-2">
-            <span class="inline-flex h-6 w-6 items-center justify-center rounded-full bg-brand-400/10 border border-brand-400/50 text-[11px] text-brand-200">01</span>
-            Organiser Login
-          </h2>
-          <p class="text-xs text-slate-400 mt-1">
-            Sign in or create an account to manage your eFootball tournaments.
-          </p>
-        </div>
-        <span class="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 border border-emerald-400/40 px-2 py-1 text-[10px] text-emerald-200">
-          <span class="h-1.5 w-1.5 rounded-full bg-emerald-400"></span>
-          Organiser Only
-        </span>
-      </div>
-
-      <!-- Login / Signup toggle -->
-      <div class="flex text-[11px] mb-4 gap-1.5 bg-slate-900/80 rounded-xl p-1 border border-slate-800/80">
-        <button id="loginTab"
-                class="flex-1 px-3 py-1.5 rounded-lg bg-slate-800 border border-slate-700 font-semibold text-slate-50">
-          Login
-        </button>
-        <button id="signupTab"
-                class="flex-1 px-3 py-1.5 rounded-lg text-slate-300">
-          Signup
-        </button>
-      </div>
-
-      <form id="authForm" class="space-y-3 text-xs">
-        <div>
-          <label class="block text-slate-300 mb-1">Email</label>
-          <input id="authEmail" type="email" required
-                 class="w-full rounded-xl bg-slate-950 border border-slate-800/80 px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-brand-400 focus:border-brand-400" />
-        </div>
-        <div>
-          <label class="block text-slate-300 mb-1">Password</label>
-          <input id="authPassword" type="password" required
-                 class="w-full rounded-xl bg-slate-950 border border-slate-800/80 px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-brand-400 focus:border-brand-400" />
-        </div>
-        <p id="authError" class="text-xs text-red-300 min-h-[1.25rem]"></p>
-        <button type="submit"
-                class="w-full rounded-xl bg-brand-400 hover:bg-brand-300 text-slate-950 font-semibold py-2.5 text-xs sm:text-sm shadow-brand-glow btn-glow">
-          Continue
-        </button>
-        <p class="text-[10px] text-slate-400 mt-2">
-          Players don't need accounts. They can join using the tournament link shared by the organiser.
-        </p>
-      </form>
-    </section>
-
-    <!-- ORGANISER SECTION -->
-    <section id="organiserSection" class="hidden">
-      <div class="grid lg:grid-cols-3 gap-5">
-
-        <!-- CREATE TOURNAMENT -->
-        <div class="lg:col-span-1">
-          <div class="bg-slate-950/90 border border-slate-800/80 rounded-2xl shadow-card-soft p-4 sm:p-5 flex flex-col card-hover">
-            <div class="flex items-center justify-between mb-3">
-              <div>
-                <h2 class="text-base font-semibold flex items-center gap-2">
-                  <span class="inline-flex h-6 w-6 items-center justify-center rounded-full bg-brand-400/10 border border-brand-400/60 text-[11px] text-brand-200">01</span>
-                  Create Tournament
+                <h2 class="text-lg sm:text-2xl font-semibold text-slate-50 leading-snug">
+                  Create. Share. Manage.<br class="hidden sm:block" />
+                  <span class="text-brand-300">All your tournaments in one link.</span>
                 </h2>
-                <p class="text-[11px] text-slate-400 mt-1">
-                  Choose platform, mode and format for your eFootball event.
+                <p class="mt-2 text-[11px] sm:text-xs text-slate-300">
+                  One page for everything — host 1v1, 2v2, 3v3 tournaments, generate fixtures automatically,
+                  and let players book their spots with their game name and ID.
                 </p>
               </div>
-              <div class="hidden sm:flex flex-col items-end text-[10px] text-slate-400">
-                <span class="uppercase tracking-[0.20em] text-slate-500">Step</span>
-                <span class="text-neon-yellow font-semibold">01 / 03</span>
+              <div class="flex flex-wrap items-center gap-2">
+                <button id="heroPrimaryBtn"
+                  class="px-3 sm:px-4 py-1.5 sm:py-2 rounded-full bg-brand-400 hover:bg-brand-300 text-slate-950 text-xs sm:text-sm font-semibold btn-glow">
+                  Start a new tournament
+                </button>
+                <button id="heroSecondaryBtn"
+                  class="px-3 sm:px-4 py-1.5 sm:py-2 rounded-full bg-slate-900 border border-slate-700 text-[11px] sm:text-xs text-slate-200 hover:bg-slate-800">
+                  Login / Sign up
+                </button>
+              </div>
+              <div class="flex flex-wrap gap-4 text-[10px] sm:text-[11px] text-slate-400">
+                <div class="flex items-center gap-1.5">
+                  <span class="h-1.5 w-1.5 rounded-full bg-emerald-400"></span>
+                  <span>Auto fixtures & standings</span>
+                </div>
+                <div class="flex items-center gap-1.5">
+                  <span class="h-1.5 w-1.5 rounded-full bg-sky-400"></span>
+                  <span>Free & paid tournaments</span>
+                </div>
+                <div class="flex items-center gap-1.5">
+                  <span class="h-1.5 w-1.5 rounded-full bg-fuchsia-400"></span>
+                  <span>Players join with one link</span>
+                </div>
               </div>
             </div>
 
-            <form id="createTournamentForm" class="space-y-3 text-[11px] sm:text-xs flex-1">
-              <div>
-                <label class="block text-slate-300 mb-1">Tournament Name</label>
-                <input id="tName" type="text" required
-                       placeholder="e.g. Efootball Mobile Cup S1"
-                       class="w-full rounded-xl bg-slate-950 border border-slate-800/80 px-3 py-2 focus:outline-none focus:ring-1 focus:ring-brand-400 focus:border-brand-400" />
-              </div>
+            <!-- Redesigned YouTube / stream card -->
+            <div class="relative rounded-3xl border border-brand-400/40 bg-gradient-to-br from-slate-950/95 via-slate-900/95 to-slate-950/95 overflow-hidden shadow-xl">
+              <!-- Glow background -->
+              <div class="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(34,211,238,0.25),transparent_55%)] opacity-70"></div>
 
-              <div class="grid grid-cols-2 gap-3">
-                <div>
-                  <label class="block text-slate-300 mb-1">Platform</label>
-                  <select id="tPlatform"
-                          class="w-full rounded-xl bg-slate-950 border border-slate-800/80 px-3 py-2 focus:outline-none focus:ring-1 focus:ring-brand-400">
-                    <option value="PS">PlayStation</option>
-                    <option value="Xbox">Xbox</option>
-                    <option value="PC">PC</option>
-                    <option value="Mobile" selected>Mobile</option>
-                  </select>
+              <div class="relative flex flex-col h-full">
+                <!-- Header row -->
+                <div class="px-3 sm:px-4 pt-3 pb-2 flex items-center justify-between gap-2 border-b border-slate-800/80">
+                  <div class="flex items-center gap-2 min-w-0">
+                    <div class="h-7 w-7 rounded-full bg-slate-900 border border-brand-300/60 flex items-center justify-center text-[10px] font-semibold text-brand-200">
+                      PG
+                    </div>
+                    <div class="min-w-0">
+                      <p class="text-[11px] sm:text-xs font-semibold text-slate-100 truncate">
+                        PesPagol Live Arena
+                      </p>
+                      <p class="text-[10px] text-slate-400 truncate">
+                        Highlight & livestream showcase
+                      </p>
+                    </div>
+                  </div>
+                  <div class="flex flex-col items-end gap-1">
+                    <div class="inline-flex items-center gap-1.5 rounded-full bg-red-500/10 border border-red-500/60 px-2 py-0.5">
+                      <span class="h-1.5 w-1.5 rounded-full bg-red-400 animate-ping"></span>
+                      <span class="h-1.5 w-1.5 rounded-full bg-red-400 -ml-2"></span>
+                      <span class="text-[10px] font-semibold text-red-200">LIVE</span>
+                    </div>
+                    <span class="text-[10px] text-slate-400 hidden sm:inline">
+                      Players can watch while joining
+                    </span>
+                  </div>
                 </div>
-                <div>
-                  <label class="block text-slate-300 mb-1">Mode</label>
-                  <select id="tMode"
-                          class="w-full rounded-xl bg-slate-950 border border-slate-800/80 px-3 py-2 focus:outline-none focus:ring-1 focus:ring-brand-400">
-                    <option value="1v1">1v1 (Players)</option>
-                    <option value="2v2">2v2 (Teams)</option>
-                    <option value="3v3">3v3 (Teams)</option>
-                  </select>
+
+                <!-- Video frame -->
+                <div class="p-3 sm:p-4 pb-2">
+                  <div class="relative rounded-2xl border border-slate-800/90 bg-slate-950/90 shadow-inner overflow-hidden">
+                    <div class="aspect-video">
+                      <iframe
+                        class="w-full h-full"
+                        src="https://www.youtube.com/embed/IB4g_M753gg?autoplay=0&mute=1&rel=0&modestbranding=1"
+                        title="PesPagol Live"
+                        frameborder="0"
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                        allowfullscreen>
+                      </iframe>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Footer / description + button -->
+                <div class="px-3 sm:px-4 pb-3 pt-1 flex flex-col gap-2">
+                  <p class="text-[11px] text-slate-300 leading-snug">
+                    Pin your tournament livestream or highlight video here. Everyone opening your
+                    tournament link can instantly watch this stream.
+                  </p>
+                  <div class="flex flex-wrap items-center justify-between gap-2">
+                    <p class="text-[10px] text-slate-500">
+                      Current: <span class="text-slate-300">YouTube: IB4g_M753gg</span>
+                    </p>
+                    <a
+                      href="https://www.youtube.com/live/IB4g_M753gg"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-900 border border-slate-700 text-[10px] sm:text-[11px] text-slate-200 hover:bg-slate-800"
+                    >
+                      <span>Watch on YouTube</span>
+                      <span class="text-[13px]">↗</span>
+                    </a>
+                  </div>
                 </div>
               </div>
-
-              <div>
-                <label class="block text-slate-300 mb-1">Tournament Type</label>
-                <select id="tType"
-                        class="w-full rounded-xl bg-slate-950 border border-slate-800/80 px-3 py-2 focus:outline-none focus:ring-1 focus:ring-brand-400">
-                  <option value="league">League</option>
-                  <option value="knockout">Knockout</option>
-                  <option value="groups_knockout">Groups + Knockout</option>
-                </select>
-              </div>
-
-              <div class="grid grid-cols-2 gap-3">
-                <div>
-                  <label class="block text-slate-300 mb-1">Start Date</label>
-                  <input id="tStart" type="date"
-                         class="w-full rounded-xl bg-slate-950 border border-slate-800/80 px-3 py-2 focus:outline-none focus:ring-1 focus:ring-brand-400" />
-                </div>
-                <div>
-                  <label class="block text-slate-300 mb-1">Max Participants</label>
-                  <input id="tMaxPlayers" type="number" min="2" max="128" value="16"
-                         class="w-full rounded-xl bg-slate-950 border border-slate-800/80 px-3 py-2 focus:outline-none focus:ring-1 focus:ring-brand-400" />
-                </div>
-              </div>
-
-              <div>
-                <label class="block text-slate-300 mb-1">Notes (optional)</label>
-                <textarea id="tNotes" rows="2"
-                          placeholder="Rules, time, prize pool, WhatsApp group link, etc."
-                          class="w-full rounded-xl bg-slate-950 border border-slate-800/80 px-3 py-2 focus:outline-none focus:ring-1 focus:ring-brand-400"></textarea>
-              </div>
-
-              <button type="submit"
-                      class="w-full rounded-xl bg-brand-400 hover:bg-brand-300 text-slate-950 font-semibold py-2.5 text-xs sm:text-sm shadow-brand-glow mt-1 btn-glow">
-                + Create Tournament
-              </button>
-            </form>
+            </div>
+            <!-- End redesigned YouTube card -->
           </div>
-        </div>
+        </section>
 
-        <!-- TOURNAMENT LIST + DETAIL -->
-        <div class="lg:col-span-2 space-y-5">
-
-          <!-- LIST -->
-          <div class="bg-slate-950/90 border border-slate-800/80 rounded-2xl shadow-card-soft p-4 sm:p-5 card-hover">
-            <div class="flex items-center justify-between mb-3">
-              <div>
-                <h2 class="text-base font-semibold flex items-center gap-2">
-                  <span class="inline-flex h-6 w-6 items-center justify-center rounded-full bg-brand-400/10 border border-brand-400/60 text-[11px] text-brand-200">02</span>
-                  Your Tournaments
-                </h2>
-                <p class="text-[11px] text-slate-400 mt-1">
-                  Open a tournament to view players, matches and standings.
+        <!-- Auth + organiser -->
+        <section id="authSection" class="glass-panel rounded-3xl border border-slate-800/80 px-4 sm:px-6 py-4 sm:py-5 shadow-lg">
+          <div class="grid md:grid-cols-[2fr,3fr] gap-4 sm:gap-6">
+            <!-- Auth card -->
+            <div class="space-y-3">
+              <div class="flex items-center justify-between gap-2">
+                <h3 class="text-sm sm:text-base font-semibold text-slate-50">
+                  Login / Sign up
+                </h3>
+                <p class="text-[10px] text-slate-400">
+                  Only organisers need an account.
                 </p>
               </div>
-              <div class="hidden sm:block text-[10px] text-slate-500 uppercase tracking-[0.18em]">
-                Dashboard
+
+              <div class="inline-flex rounded-full bg-slate-900/70 border border-slate-700 p-0.5 text-[11px]">
+                <button id="loginTab"
+                  class="flex-1 px-3 py-1.5 rounded-full text-center">
+                  Login
+                </button>
+                <button id="signupTab"
+                  class="flex-1 px-3 py-1.5 rounded-full text-center">
+                  Sign up
+                </button>
+              </div>
+
+              <form id="authForm" class="space-y-2 text-[11px] sm:text-xs">
+                <div>
+                  <label for="authEmail" class="block text-slate-300 mb-1">Email</label>
+                  <input id="authEmail" type="email" required
+                    class="w-full rounded-2xl bg-slate-950 border border-slate-800 px-3 py-2 focus:outline-none focus:ring-1 focus:ring-brand-400" />
+                </div>
+                <div>
+                  <label for="authPassword" class="block text-slate-300 mb-1">Password</label>
+                  <input id="authPassword" type="password" required
+                    class="w-full rounded-2xl bg-slate-950 border border-slate-800 px-3 py-2 focus:outline-none focus:ring-1 focus:ring-brand-400" />
+                </div>
+                <p id="authError" class="text-[11px] text-red-400 min-h-[1.25rem]"></p>
+                <button type="submit"
+                  class="w-full rounded-2xl bg-brand-400 hover:bg-brand-300 text-slate-950 font-semibold py-2 text-xs sm:text-sm btn-glow">
+                  Continue
+                </button>
+              </form>
+            </div>
+
+            <!-- organiserSection (hidden until login) -->
+            <div id="organiserSection" class="space-y-3 hidden">
+              <h3 class="text-sm sm:text-base font-semibold text-slate-50">
+                Your tournaments
+              </h3>
+              <div class="grid sm:grid-cols-2 gap-3">
+                <!-- Create tournament -->
+                <div class="rounded-2xl border border-slate-800 bg-slate-950/90 p-3 space-y-2">
+                  <h4 class="text-xs font-semibold text-slate-100 mb-1">
+                    Create tournament
+                  </h4>
+                  <form id="createTournamentForm" class="space-y-2 text-[11px] sm:text-xs">
+                    <div>
+                      <label for="tName" class="block text-slate-300 mb-1">Tournament name</label>
+                      <input id="tName" type="text" required
+                        class="w-full rounded-2xl bg-slate-950 border border-slate-800 px-3 py-2 focus:outline-none focus:ring-1 focus:ring-brand-400" />
+                    </div>
+                    <div class="grid grid-cols-2 gap-2">
+                      <div>
+                        <label for="tPlatform" class="block text-slate-300 mb-1">Platform</label>
+                        <select id="tPlatform"
+                          class="w-full rounded-2xl bg-slate-950 border border-slate-800 px-3 py-2">
+                          <option value="Mobile">Mobile</option>
+                          <option value="PC">PC</option>
+                          <option value="Console">Console</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label for="tMode" class="block text-slate-300 mb-1">Mode</label>
+                        <select id="tMode"
+                          class="w-full rounded-2xl bg-slate-950 border border-slate-800 px-3 py-2">
+                          <option value="1v1">1v1</option>
+                          <option value="2v2">2v2</option>
+                          <option value="3v3">3v3</option>
+                        </select>
+                      </div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2">
+                      <div>
+                        <label for="tType" class="block text-slate-300 mb-1">Tournament type</label>
+                        <select id="tType"
+                          class="w-full rounded-2xl bg-slate-950 border border-slate-800 px-3 py-2">
+                          <option value="league">League</option>
+                          <option value="knockout">Knockout</option>
+                          <option value="groups_knockout">Groups + Knockout</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label for="tStart" class="block text-slate-300 mb-1">Start date</label>
+                        <input id="tStart" type="date"
+                          class="w-full rounded-2xl bg-slate-950 border border-slate-800 px-3 py-2" />
+                      </div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2">
+                      <div>
+                        <label for="tMaxPlayers" class="block text-slate-300 mb-1">Max participants</label>
+                        <input id="tMaxPlayers" type="number" value="16" min="2"
+                          class="w-full rounded-2xl bg-slate-950 border border-slate-800 px-3 py-2" />
+                      </div>
+                      <div>
+                        <label class="block text-slate-300 mb-1">Payment type</label>
+                        <select id="tPaidType"
+                          class="w-full rounded-2xl bg-slate-950 border border-slate-800 px-3 py-2">
+                          <option value="free">Free</option>
+                          <option value="paid">Paid</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <div id="paidFields" class="hidden space-y-2">
+                      <div>
+                        <label for="tEntryFee" class="block text-slate-300 mb-1">Entry fee (₹)</label>
+                        <input id="tEntryFee" type="number" min="0"
+                          class="w-full rounded-2xl bg-slate-950 border border-slate-800 px-3 py-2" />
+                      </div>
+                      <div>
+                        <label for="tPrizePool" class="block text-slate-300 mb-1">Prize pool (₹)</label>
+                        <input id="tPrizePool" type="number" min="0"
+                          class="w-full rounded-2xl bg-slate-950 border border-slate-800 px-3 py-2" />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label for="tNotes" class="block text-slate-300 mb-1">Notes / rules (optional)</label>
+                      <textarea id="tNotes" rows="2"
+                        class="w-full rounded-2xl bg-slate-950 border border-slate-800 px-3 py-2 text-[11px]"></textarea>
+                    </div>
+                    <button type="submit"
+                      class="w-full rounded-2xl bg-brand-400 hover:bg-brand-300 text-slate-950 font-semibold py-2 text-xs sm:text-sm btn-glow">
+                      Create tournament
+                    </button>
+                  </form>
+                </div>
+
+                <!-- List + detail -->
+                <div class="space-y-3">
+                  <div class="rounded-2xl border border-slate-800 bg-slate-950/90 p-3 h-40 overflow-y-auto" id="tournamentList">
+                    <p class="text-[11px] text-slate-400">No tournaments yet.</p>
+                  </div>
+                  <div class="rounded-2xl border border-slate-800 bg-slate-950/90 p-3 min-h-[140px]" id="tournamentDetail">
+                    <p class="text-[11px] text-slate-400">Select a tournament to see fixtures, standings & share links.</p>
+                  </div>
+                </div>
               </div>
             </div>
-            <div id="tournamentList" class="space-y-3 text-sm"></div>
-          </div>
 
-          <!-- DETAIL -->
-          <div class="bg-slate-950/90 border border-slate-800/80 rounded-2xl shadow-card-soft p-4 sm:p-5 card-hover">
-            <h2 class="text-base font-semibold flex items-center gap-2 mb-3">
-              <span class="inline-flex h-6 w-6 items-center justify-center rounded-full bg-brand-400/10 border border-brand-400/60 text-[11px] text-brand-200">03</span>
-              Tournament Details
-            </h2>
-            <div id="tournamentDetail" class="text-sm text-slate-300">
-              <p class="text-xs text-slate-400">
-                Select a tournament on the left to see overview, players, match center and standings.
+            <!-- Placeholder when organiser not logged in -->
+            <div id="organiserSectionPlaceholder" class="text-[11px] sm:text-xs text-slate-400">
+              <p>This area shows your tournaments after you login.</p>
+              <p class="mt-1">
+                Create multiple events, send links to players, and watch fixtures + standings update in real time.
               </p>
             </div>
           </div>
-        </div>
+        </section>
+
+        <!-- Public View / Join -->
+        <section id="publicSection"
+          class="glass-panel rounded-3xl border border-slate-800/80 px-4 sm:px-6 py-4 sm:py-5 shadow-lg hidden">
+          <div class="space-y-3">
+            <div id="publicTournamentInfo" class="text-[11px] sm:text-xs text-slate-300">
+              Loading tournament…
+            </div>
+            <div id="publicModeContent" class="mt-2 text-[11px] sm:text-xs"></div>
+          </div>
+        </section>
       </div>
-    </section>
+    </main>
 
-    <!-- PUBLIC VIEW / JOIN SECTION -->
-    <section id="publicSection" class="hidden">
-      <div class="bg-slate-950/92 border border-slate-800/80 rounded-2xl shadow-card-soft p-4 sm:p-5 card-hover">
-        <div id="publicTournamentInfo" class="mb-4 text-sm text-slate-200">
-          Loading tournament...
+    <!-- Edit page overlay -->
+    <div id="editPage"
+      class="fixed inset-0 bg-slate-950/80 flex items-center justify-center z-30 hidden">
+      <div class="w-full max-w-md mx-3 rounded-3xl border border-slate-800 bg-slate-950/95 p-4 sm:p-5">
+        <div class="flex items-center justify-between mb-3">
+          <h3 class="text-sm sm:text-base font-semibold text-slate-50">Edit tournament</h3>
+          <button id="editCancelBtn"
+            class="text-[11px] text-slate-400 hover:text-slate-200 px-2 py-1 rounded-full hover:bg-slate-800">
+            Close
+          </button>
         </div>
-        <div id="publicModeContent" class="space-y-4 text-sm"></div>
-      </div>
-    </section>
-  </main>
-
-  <!-- FOOTER -->
-  <footer class="border-t border-slate-800/80 bg-slate-950/90">
-    <div class="max-w-6xl mx-auto px-4 py-3 flex flex-col sm:flex-row items-center justify-between gap-2">
-      <p class="text-[10px] text-slate-500 text-center sm:text-left">
-        Powered by <span class="text-slate-200 font-medium">PesPagol</span> · Efootball Tournament Platform
-      </p>
-      <p class="text-[10px] text-slate-500 text-center sm:text-right">
-        1v1 · 2v2 · 3v3 · League · Knockout · Groups + Knockout
-      </p>
-    </div>
-  </footer>
-
-  <!-- EDIT POPUP -->
-  <section id="editPage"
-           class="hidden fixed inset-0 bg-slate-950/95 backdrop-blur-xl z-40 p-4 sm:p-6 flex items-center justify-center">
-    <div class="max-w-lg w-full bg-slate-950/95 border border-slate-800/80 rounded-2xl p-5 sm:p-6 shadow-card-soft card-hover">
-      <h2 class="text-lg font-bold text-slate-100 mb-3 flex items-center gap-2">
-        <span class="inline-flex h-6 w-6 items-center justify-center rounded-full bg-brand-400/10 border border-brand-400/60 text-[11px] text-brand-200">Edit</span>
-        Tournament
-      </h2>
-      <form id="editTournamentForm" class="space-y-3 text-xs sm:text-sm">
-        <div>
-          <label class="block text-slate-300 mb-1">Tournament Name</label>
-          <input id="edit_tName" type="text"
-                 class="w-full rounded-xl bg-slate-950 border border-slate-800/80 px-3 py-2" />
-        </div>
-        <div>
-          <label class="block text-slate-300 mb-1">Notes</label>
-          <textarea id="edit_tNotes" rows="2"
-                    class="w-full rounded-xl bg-slate-950 border border-slate-800/80 px-3 py-2"></textarea>
-        </div>
-        <div class="grid grid-cols-2 gap-3">
+        <form id="editTournamentForm" class="space-y-2 text-[11px] sm:text-xs">
           <div>
-            <label class="block text-slate-300 mb-1">Start Date</label>
+            <label class="block text-slate-300 mb-1">Tournament name</label>
+            <input id="edit_tName" type="text"
+              class="w-full rounded-2xl bg-slate-950 border border-slate-800 px-3 py-2" />
+          </div>
+          <div>
+            <label class="block text-slate-300 mb-1">Start date</label>
             <input id="edit_tStart" type="date"
-                   class="w-full rounded-xl bg-slate-950 border border-slate-800/80 px-3 py-2" />
+              class="w-full rounded-2xl bg-slate-950 border border-slate-800 px-3 py-2" />
           </div>
           <div>
-            <label class="block text-slate-300 mb-1">Max Participants</label>
-            <input id="edit_tMax" type="number"
-                   class="w-full rounded-xl bg-slate-950 border border-slate-800/80 px-3 py-2" />
+            <label class="block text-slate-300 mb-1">Max participants</label>
+            <input id="edit_tMax" type="number" min="2"
+              class="w-full rounded-2xl bg-slate-950 border border-slate-800 px-3 py-2" />
           </div>
-        </div>
-        <div class="flex items-center justify-between mt-4 gap-3">
-          <button type="button" id="editCancelBtn"
-                  class="w-1/2 px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs sm:text-sm">
-            Cancel
-          </button>
-          <button type="submit"
-                  class="w-1/2 px-4 py-2 rounded-xl bg-brand-400 hover:bg-brand-300 text-slate-950 font-semibold text-xs sm:text-sm btn-glow">
-            Save Changes
-          </button>
-        </div>
-      </form>
+          <div>
+            <label class="block text-slate-300 mb-1">Notes / rules</label>
+            <textarea id="edit_tNotes" rows="2"
+              class="w-full rounded-2xl bg-slate-950 border border-slate-800 px-3 py-2 text-[11px]"></textarea>
+          </div>
+          <div class="flex justify-end gap-2 pt-2">
+            <button type="button" id="editCancelBtn2"
+              class="px-3 py-1.5 rounded-full bg-slate-900 border border-slate-700 text-[11px] text-slate-200 hover:bg-slate-800">
+              Cancel
+            </button>
+            <button type="submit"
+              class="px-3 py-1.5 rounded-full bg-brand-400 hover:bg-brand-300 text-slate-950 text-[11px] font-semibold btn-glow">
+              Save changes
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
-  </section>
+  </div>
 
-  <!-- APP SCRIPT -->
+  <!-- Firebase logic -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.1/firebase-app.js";
     import {
@@ -511,10 +459,11 @@
       orderBy,
       serverTimestamp,
       updateDoc,
-      deleteDoc
+      deleteDoc,
+      onSnapshot
     } from "https://www.gstatic.com/firebasejs/10.12.1/firebase-firestore.js";
 
-    // Firebase config
+    // ===== Firebase config =====
     const firebaseConfig = {
       apiKey: "AIzaSyBJmw5rvmN3DrDBUveGZlqHU3j-xmjKYSI",
       authDomain: "pes-tournament-e2a1a.firebaseapp.com",
@@ -528,59 +477,65 @@
 
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
-    const db = getFirestore(app);
+    const db   = getFirestore(app);
 
-    // Mode detection
+    // ===== Mode detection (organiser / public view / join) =====
     const params = new URLSearchParams(window.location.search);
     const viewId = params.get("view");
     const joinId = params.get("join");
-    const mode = viewId ? "view" : joinId ? "join" : "organiser";
+    const mode   = viewId ? "view" : joinId ? "join" : "organiser";
 
-    // DOM refs
-    const headerModeTag = document.getElementById("headerModeTag");
-    const logoutBtn = document.getElementById("logoutBtn");
-    const heroSection = document.getElementById("heroSection");
-    const heroPrimaryBtn = document.getElementById("heroPrimaryBtn");
-    const heroSecondaryBtn = document.getElementById("heroSecondaryBtn");
-    const globalLoader = document.getElementById("globalLoader");
+    // ===== DOM references =====
+    const headerModeTag        = document.getElementById("headerModeTag");
+    const logoutBtn            = document.getElementById("logoutBtn");
+    const heroSection          = document.getElementById("heroSection");
+    const heroPrimaryBtn       = document.getElementById("heroPrimaryBtn");
+    const heroSecondaryBtn     = document.getElementById("heroSecondaryBtn");
+    const globalLoader         = document.getElementById("globalLoader");
 
-    const authSection = document.getElementById("authSection");
-    const organiserSection = document.getElementById("organiserSection");
-    const publicSection = document.getElementById("publicSection");
-    const editPage = document.getElementById("editPage");
-    const editTournamentForm = document.getElementById("editTournamentForm");
-    const editCancelBtn = document.getElementById("editCancelBtn");
+    const authSection          = document.getElementById("authSection");
+    const organiserSection     = document.getElementById("organiserSection");
+    const organiserSectionPlaceholder = document.getElementById("organiserSectionPlaceholder");
+    const publicSection        = document.getElementById("publicSection");
+    const editPage             = document.getElementById("editPage");
+    const editTournamentForm   = document.getElementById("editTournamentForm");
+    const editCancelBtn        = document.getElementById("editCancelBtn");
+    const editCancelBtn2       = document.getElementById("editCancelBtn2");
 
-    const loginTab = document.getElementById("loginTab");
-    const signupTab = document.getElementById("signupTab");
-    const authForm = document.getElementById("authForm");
-    const authEmail = document.getElementById("authEmail");
-    const authPassword = document.getElementById("authPassword");
-    const authError = document.getElementById("authError");
+    const loginTab             = document.getElementById("loginTab");
+    const signupTab            = document.getElementById("signupTab");
+    const authForm             = document.getElementById("authForm");
+    const authEmail            = document.getElementById("authEmail");
+    const authPassword         = document.getElementById("authPassword");
+    const authError            = document.getElementById("authError");
 
     const createTournamentForm = document.getElementById("createTournamentForm");
-    const tournamentListEl = document.getElementById("tournamentList");
-    const tournamentDetailEl = document.getElementById("tournamentDetail");
+    const tournamentListEl     = document.getElementById("tournamentList");
+    const tournamentDetailEl   = document.getElementById("tournamentDetail");
 
     const publicTournamentInfo = document.getElementById("publicTournamentInfo");
-    const publicModeContent = document.getElementById("publicModeContent");
+    const publicModeContent    = document.getElementById("publicModeContent");
 
-    let authMode = "login";
-    let currentUser = null;
-    let selectedTournamentId = null;
-    let currentTournaments = [];
-    let currentEditId = null;
-    let currentEditTournamentData = null;
+    // ===== State =====
+    let authMode              = "login";
+    let currentUser           = null;
+    let selectedTournamentId  = null;
+    let currentTournaments    = [];
+    let currentEditId         = null;
+    let currentTournamentUnsubs = [];
 
-    // Loader helpers
+    // ===== Helpers =====
     function showLoader() {
-      if (globalLoader) globalLoader.classList.remove("hidden");
+      globalLoader?.classList.remove("hidden");
     }
     function hideLoader() {
-      if (globalLoader) globalLoader.classList.add("hidden");
+      globalLoader?.classList.add("hidden");
+    }
+    function showPopup(msg) {
+      alert(msg);
     }
 
-    // Mode header text
+    // ===== Mode label in header =====
     if (mode === "organiser") {
       headerModeTag.classList.remove("hidden");
       headerModeTag.textContent = "Organiser Panel · Create & manage tournaments";
@@ -592,44 +547,39 @@
       headerModeTag.textContent = "Player Join · Book your spot";
     }
 
-    // Hero buttons
-    if (heroPrimaryBtn) {
-      heroPrimaryBtn.addEventListener("click", () => {
-        if (mode !== "organiser") return;
-        if (currentUser) {
-          createTournamentForm?.scrollIntoView({ behavior: "smooth", block: "start" });
-        } else {
-          authSection?.scrollIntoView({ behavior: "smooth", block: "start" });
-        }
-      });
-    }
+    // ===== Hero buttons (organiser only) =====
+    heroPrimaryBtn?.addEventListener("click", () => {
+      if (mode !== "organiser") return;
+      if (currentUser) {
+        document.getElementById("createTournamentForm")?.scrollIntoView({ behavior: "smooth", block: "start" });
+      } else {
+        authSection?.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+    });
+    heroSecondaryBtn?.addEventListener("click", () => {
+      if (mode !== "organiser") return;
+      authSection?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    });
 
-    if (heroSecondaryBtn) {
-      heroSecondaryBtn.addEventListener("click", () => {
-        if (mode !== "organiser") return;
-        authSection?.scrollIntoView({ behavior: "smooth", block: "nearest" });
-      });
-    }
-
-    // Auth UI switching
+    // ===== Auth tab switching =====
     function setAuthMode(newMode) {
       authMode = newMode;
       if (newMode === "login") {
-        loginTab.classList.add("bg-slate-800", "border", "border-slate-700", "font-semibold", "text-slate-50");
-        signupTab.classList.remove("bg-slate-800", "border", "border-slate-700", "font-semibold", "text-slate-50");
+        loginTab.classList.add("bg-slate-800","border","border-slate-700","font-semibold","text-slate-50");
+        signupTab.classList.remove("bg-slate-800","border","border-slate-700","font-semibold","text-slate-50");
         signupTab.classList.add("text-slate-300");
       } else {
-        signupTab.classList.add("bg-slate-800", "border", "border-slate-700", "font-semibold", "text-slate-50");
-        loginTab.classList.remove("bg-slate-800", "border", "border-slate-700", "font-semibold", "text-slate-50");
+        signupTab.classList.add("bg-slate-800","border","border-slate-700","font-semibold","text-slate-50");
+        loginTab.classList.remove("bg-slate-800","border","border-slate-700","font-semibold","text-slate-50");
         loginTab.classList.add("text-slate-300");
       }
       authError.textContent = "";
     }
-
+    setAuthMode("login");
     loginTab.addEventListener("click", () => setAuthMode("login"));
     signupTab.addEventListener("click", () => setAuthMode("signup"));
 
-    // Auth form submit
+    // ===== Auth form submit =====
     authForm.addEventListener("submit", async (e) => {
       e.preventDefault();
       authError.textContent = "";
@@ -649,26 +599,32 @@
       }
     });
 
+    // ===== Logout =====
     logoutBtn.addEventListener("click", async () => {
       showLoader();
       await signOut(auth);
       hideLoader();
     });
 
-    // Load organiser tournaments
-    async function loadTournamentsForUser(userId) {
+    // ===== Helpers for organiser =====
+    function clearCurrentTournamentListeners() {
+      currentTournamentUnsubs.forEach(unsub => {
+        try { unsub(); } catch (_) {}
+      });
+      currentTournamentUnsubs = [];
+    }
+
+    async function loadTournamentsForUser(uid) {
       showLoader();
       try {
         const q = query(
           collection(db, "tournaments"),
-          where("ownerUid", "==", userId),
+          where("ownerUid", "==", uid),
           orderBy("createdAt", "desc")
         );
         const snap = await getDocs(q);
         currentTournaments = [];
-        snap.forEach(docSnap => {
-          currentTournaments.push({ id: docSnap.id, ...docSnap.data() });
-        });
+        snap.forEach(d => currentTournaments.push({ id: d.id, ...d.data() }));
         renderTournamentList();
       } finally {
         hideLoader();
@@ -677,20 +633,15 @@
 
     function renderTournamentList() {
       tournamentListEl.innerHTML = "";
-      if (currentTournaments.length === 0) {
+      if (!currentTournaments.length) {
         tournamentListEl.innerHTML =
-          '<p class="text-slate-400 text-xs sm:text-sm">No tournaments yet. Create your first eFootball event on the left.</p>';
+          '<p class="text-slate-400 text-[11px]">No tournaments yet. Create your first event on the left.</p>';
         return;
       }
 
       currentTournaments.forEach(t => {
-        const participantsCount = t.mode === "1v1"
-          ? (t.playerCount || 0)
-          : (t.teamCount || 0);
-
-        const wrapper = document.createElement("div");
-        wrapper.className =
-          "rounded-2xl border border-slate-800/80 bg-slate-950/80 px-3 py-3 sm:px-4 sm:py-3 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 sm:gap-3 card-hover";
+        const participantsCount =
+          t.mode === "1v1" ? (t.playerCount || 0) : (t.teamCount || 0);
 
         const typeLabel =
           t.type === "league" ? "League" :
@@ -698,30 +649,40 @@
           t.type === "groups_knockout" ? "Groups + Knockout" :
           t.type;
 
+        const paidLabel = t.paidType === "paid"
+          ? `Paid • Entry ₹${t.entryFee || 0} • Pool ₹${t.prizePool || 0}`
+          : "Free";
+
+        const wrapper = document.createElement("div");
+        wrapper.className =
+          "rounded-2xl border border-slate-800 bg-slate-950/80 px-3 py-3 " +
+          "flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 sm:gap-3 card-hover";
+
         wrapper.innerHTML = `
           <div class="min-w-0">
-            <div class="font-semibold text-slate-50 text-sm sm:text-base truncate flex items-center gap-1.5">
+            <div class="font-semibold text-slate-50 text-[13px] sm:text-sm truncate flex items-center gap-1.5">
               <span class="inline-flex h-1.5 w-1.5 rounded-full bg-brand-400"></span>
               <span class="truncate">${t.name}</span>
             </div>
-            <div class="text-[11px] sm:text-xs text-slate-400 mt-0.5 sm:mt-1 flex flex-wrap gap-x-2 gap-y-0.5">
+            <div class="text-[10px] sm:text-[11px] text-slate-400 mt-0.5 sm:mt-1 flex flex-wrap gap-x-2 gap-y-0.5">
               <span>${t.platform}</span>
               <span>• ${t.mode}</span>
               <span>• ${typeLabel}</span>
+              <span>• ${paidLabel}</span>
               ${t.startDate ? `<span>• Starts ${t.startDate}</span>` : ""}
             </div>
-            <div class="text-[11px] text-slate-500 mt-1">
+            <div class="text-[10px] text-slate-500 mt-1">
               ${(t.mode === "1v1" ? "Players" : "Teams")}: ${participantsCount}
             </div>
           </div>
-          <div class="flex items-center gap-2">
-            <button class="btn-open px-3 py-1.5 rounded-full bg-brand-400 hover:bg-brand-300 text-slate-950 text-[11px] font-semibold shadow-brand-glow btn-glow">
+          <div class="flex items-center gap-1.5">
+            <button class="btn-open px-3 py-1.5 rounded-full bg-brand-400 hover:bg-brand-300 text-slate-950 text-[10px] font-semibold shadow-brand-glow btn-glow">
               Open
             </button>
-            <button class="btn-edit px-3 py-1.5 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-50 text-[11px] font-semibold">
+            <button class="btn-edit px-3 py-1.5 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-50 text-[10px] font-semibold">
               Edit
             </button>
-            <button class="btn-delete px-3 py-1.5 rounded-full bg-red-500/80 hover:bg-red-500 text-slate-50 text-[11px] font-semibold">
+            <button class="btn-delete px-3 py-1.5 rounded-full bg-red-500/80 hover:bg-red-500 text-slate-50 text-[10px] font-semibold">
               Delete
             </button>
           </div>
@@ -729,7 +690,8 @@
 
         wrapper.querySelector(".btn-open").addEventListener("click", () => {
           selectedTournamentId = t.id;
-          renderTournamentDetail();
+          clearCurrentTournamentListeners();
+          renderTournamentDetailRealtime();
         });
 
         wrapper.querySelector(".btn-edit").addEventListener("click", () => {
@@ -743,7 +705,7 @@
           try {
             await deleteTournament(t.id);
             await loadTournamentsForUser(currentUser.uid);
-            tournamentDetailEl.innerHTML = "<p class='text-xs text-slate-400'>Select a tournament.</p>";
+            tournamentDetailEl.innerHTML = "<p class='text-[11px] text-slate-400'>Select a tournament.</p>";
           } finally {
             hideLoader();
           }
@@ -753,7 +715,6 @@
       });
     }
 
-    // Delete tournament + subcollections
     async function deleteTournament(tId) {
       const tRef = doc(db, "tournaments", tId);
 
@@ -764,87 +725,95 @@
           await deleteDoc(doc(db, "tournaments", tId, path, d.id));
         }
       }
-
       await deleteSub("players");
       await deleteSub("teams");
       await deleteSub("matches");
       await deleteDoc(tRef);
     }
 
-    // Edit tournament
-    async function editTournament(tId, newData) {
-      const tRef = doc(db, "tournaments", tId);
-      await updateDoc(tRef, newData);
-    }
-
     function openEditPage(t) {
       currentEditId = t.id;
-      currentEditTournamentData = t;
-      document.getElementById("edit_tName").value = t.name || "";
+      document.getElementById("edit_tName").value  = t.name || "";
       document.getElementById("edit_tNotes").value = t.notes || "";
       document.getElementById("edit_tStart").value = t.startDate || "";
-      document.getElementById("edit_tMax").value = t.maxParticipants || "";
+      document.getElementById("edit_tMax").value   = t.maxParticipants || "";
       editPage.classList.remove("hidden");
     }
-
-    editCancelBtn.addEventListener("click", () => {
+    function closeEditPage() {
       editPage.classList.add("hidden");
-    });
+    }
+    editCancelBtn.addEventListener("click", closeEditPage);
+    editCancelBtn2.addEventListener("click", closeEditPage);
 
     editTournamentForm.addEventListener("submit", async (e) => {
       e.preventDefault();
       if (!currentEditId || !currentUser) return;
 
       const newData = {
-        name: document.getElementById("edit_tName").value.trim(),
-        notes: document.getElementById("edit_tNotes").value.trim(),
+        name:      document.getElementById("edit_tName").value.trim(),
+        notes:     document.getElementById("edit_tNotes").value.trim(),
         startDate: document.getElementById("edit_tStart").value || null,
         maxParticipants: Number(document.getElementById("edit_tMax").value) || null
       };
 
       showLoader();
       try {
-        await editTournament(currentEditId, newData);
+        await updateDoc(doc(db, "tournaments", currentEditId), newData);
         alert("Tournament updated successfully!");
-        editPage.classList.add("hidden");
+        closeEditPage();
         await loadTournamentsForUser(currentUser.uid);
         if (selectedTournamentId === currentEditId) {
-          await renderTournamentDetail();
+          clearCurrentTournamentListeners();
+          await renderTournamentDetailRealtime();
         }
       } finally {
         hideLoader();
       }
     });
 
-    // Tabs helper
     function setActiveTab(buttons, active, panels) {
+      const { overviewEl, participantsEl, matchesEl, standingsEl, bracketEl } = panels;
       buttons.forEach(btn => {
         const tab = btn.getAttribute("data-tab");
         if (tab === active) {
-          btn.classList.add("border-b-2", "border-brand-400", "text-brand-200");
-          btn.classList.remove("border-transparent", "text-slate-400");
+          btn.classList.add("border-b-2","border-brand-400","text-brand-200");
+          btn.classList.remove("border-transparent","text-slate-400");
         } else {
-          btn.classList.remove("border-b-2", "border-brand-400", "text-brand-200");
-          btn.classList.add("border-transparent", "text-slate-400");
+          btn.classList.remove("border-b-2","border-brand-400","text-brand-200");
+          btn.classList.add("border-transparent","text-slate-400");
         }
       });
-
-      const { overviewEl, participantsEl, matchesEl, standingsEl, bracketEl } = panels;
-      const map = { overview: overviewEl, participants: participantsEl, matches: matchesEl, standings: standingsEl, bracket: bracketEl };
-      Object.entries(map).forEach(([key, el]) => {
-        if (!el) return;
+      const map = {
+        overview: overviewEl,
+        participants: participantsEl,
+        matches: matchesEl,
+        standings: standingsEl,
+        bracket: bracketEl
+      };
+      for (const [key, el] of Object.entries(map)) {
+        if (!el) continue;
         if (key === active) el.classList.remove("hidden");
         else el.classList.add("hidden");
-      });
+      }
     }
 
     function renderOverviewTab(container, t, viewLink, joinLink) {
+      const typeLabel =
+        t.type === "league" ? "League" :
+        t.type === "knockout" ? "Knockout" :
+        t.type === "groups_knockout" ? "Groups + Knockout" :
+        t.type;
+
+      const paidLabel = t.paidType === "paid"
+        ? `Paid · Entry ₹${t.entryFee || 0} · Prize pool ₹${t.prizePool || 0}`
+        : "Free tournament";
+
       container.innerHTML = `
         <div class="space-y-3 text-[11px] sm:text-xs">
           <div class="bg-slate-950 border border-slate-800 rounded-2xl px-3 py-2.5">
             <div class="font-semibold text-slate-200 mb-1 flex items-center gap-1.5">
               <span class="inline-flex h-1.5 w-1.5 rounded-full bg-brand-400"></span>
-              Share Links
+              <span>Share links</span>
             </div>
             <div class="space-y-1.5">
               <div class="flex flex-col sm:flex-row sm:items-center gap-1">
@@ -856,6 +825,10 @@
                 <span class="break-all text-slate-100">${joinLink}</span>
               </div>
             </div>
+            <button id="btnExportPdf"
+              class="mt-3 px-3 py-1.5 rounded-full bg-slate-900 border border-slate-700 text-[11px] text-slate-200 hover:bg-slate-800">
+              Export fixtures (PDF)
+            </button>
           </div>
 
           <div class="bg-slate-950 border border-slate-800 rounded-2xl px-3 py-2.5">
@@ -863,7 +836,8 @@
             <ul class="text-slate-400 list-disc ml-4 space-y-1">
               <li>Platform: <span class="text-slate-100">${t.platform}</span></li>
               <li>Mode: <span class="text-slate-100">${t.mode}</span></li>
-              <li>Type: <span class="text-slate-100">${t.type}</span></li>
+              <li>Type: <span class="text-slate-100">${typeLabel}</span></li>
+              <li>Payment: <span class="text-slate-100">${paidLabel}</span></li>
               ${t.startDate ? `<li>Start date: <span class="text-slate-100">${t.startDate}</span></li>` : ""}
               ${t.maxParticipants ? `<li>Max participants: <span class="text-slate-100">${t.maxParticipants}</span></li>` : ""}
             </ul>
@@ -876,6 +850,7 @@
           </div>
         </div>
       `;
+      container.querySelector("#btnExportPdf")?.addEventListener("click", () => exportTournamentPdf(t));
     }
 
     function renderParticipantsTab(container, t, players, teams) {
@@ -890,13 +865,12 @@
       `).join("");
 
       const teamRows = teams.map((tm, idx) => {
-        const membersLines = (tm.members || []).map(m => {
-          return `<div class="text-[11px] text-slate-200">
+        const membersLines = (tm.members || []).map(m => `
+          <div class="text-[11px] text-slate-200">
             ${m.gameName || "-"}
             <span class="text-slate-500">(${m.realName || "Unknown"}, ${m.gameId || "No ID"}, ${m.mobile || "No mobile"})</span>
-          </div>`;
-        }).join("");
-
+          </div>
+        `).join("");
         return `
           <tr class="border-b border-slate-800 align-top">
             <td class="px-2 py-1 text-[11px] text-slate-500">${idx + 1}</td>
@@ -916,8 +890,8 @@
                 <thead class="bg-slate-900 text-slate-300">
                   <tr>
                     <th class="px-2 py-1 text-left w-6">#</th>
-                    <th class="px-2 py-1 text-left">Game Name</th>
-                    <th class="px-2 py-1 text-left">Real Name</th>
+                    <th class="px-2 py-1 text-left">Game name</th>
+                    <th class="px-2 py-1 text-left">Real name</th>
                     <th class="px-2 py-1 text-left">Game ID</th>
                     <th class="px-2 py-1 text-left">Mobile</th>
                   </tr>
@@ -943,8 +917,8 @@
                   <tr>
                     <th class="px-2 py-1 text-left w-6">#</th>
                     <th class="px-2 py-1 text-left">Team</th>
-                    <th class="px-2 py-1 text-left">Members (Game Name · Real Name · Game ID · Mobile)</th>
-                    <th class="px-2 py-1 text-left">Team Code</th>
+                    <th class="px-2 py-1 text-left">Members (Game name · Real name · Game ID · Mobile)</th>
+                    <th class="px-2 py-1 text-left">Team code</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -961,76 +935,6 @@
           </div>
         </div>
       `;
-    }
-
-    async function renderMatchesTab(container, t, players, teams) {
-      const docRef = doc(db, "tournaments", t.id);
-      const matchesSnap = await getDocs(
-        query(collection(docRef, "matches"), orderBy("round", "asc"))
-      );
-      const matches = [];
-      matchesSnap.forEach(m => matches.push({ id: m.id, ...m.data() }));
-
-      const isTeams = t.mode !== "1v1";
-      const entities = isTeams
-        ? teams.map(tm => ({ id: tm.id, displayName: tm.name }))
-        : players.map(p => ({ id: p.id, displayName: p.gameName || "Player" }));
-
-      container.innerHTML = `
-        <div class="space-y-3 text-[11px] sm:text-xs">
-          <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
-            <div>
-              <h4 class="font-semibold text-slate-100 text-sm">Match Center</h4>
-              <p class="text-slate-400">
-                Generate fixtures and input scores. Standings update automatically.
-              </p>
-            </div>
-            <div class="flex flex-wrap gap-2">
-              <button id="btnGenerateFixtures"
-                class="px-3 py-1.5 rounded-full bg-brand-400 hover:bg-brand-300 text-slate-950 font-semibold shadow-brand-glow btn-glow">
-                Generate Simple Fixtures
-              </button>
-            </div>
-          </div>
-
-          <div id="matchesTableWrapper" class="overflow-x-auto rounded-2xl border border-slate-800 bg-slate-950/90"></div>
-        </div>
-      `;
-
-      const btnGenerate = document.getElementById("btnGenerateFixtures");
-      const tableWrapper = document.getElementById("matchesTableWrapper");
-
-      async function saveFixtures(newMatches) {
-        for (const m of newMatches) {
-          await addDoc(collection(docRef, "matches"), {
-            ...m,
-            createdAt: serverTimestamp()
-          });
-        }
-      }
-
-      async function handleGenerate() {
-        if (!entities || entities.length < 2) {
-          alert("At least 2 participants are required to generate fixtures.");
-          return;
-        }
-        if (matches.length > 0) {
-          const confirmReplace = confirm("Matches already exist. Generate more fixtures anyway?");
-          if (!confirmReplace) return;
-        }
-
-        showLoader();
-        try {
-          const simpleMatches = createSimpleFixtures(t, entities);
-          await saveFixtures(simpleMatches);
-          await renderMatchesTab(container, t, players, teams);
-        } finally {
-          hideLoader();
-        }
-      }
-
-      btnGenerate.addEventListener("click", handleGenerate);
-      renderMatchesTable(tableWrapper, matches, t);
     }
 
     function createSimpleFixtures(t, entities) {
@@ -1083,47 +987,138 @@
       return matches;
     }
 
-    function renderMatchesTable(wrapper, matches, t) {
-      if (!matches || matches.length === 0) {
+    async function regenerateFixturesById(tournamentId, force = false) {
+      const tRef = doc(db, "tournaments", tournamentId);
+      const tSnap = await getDoc(tRef);
+      if (!tSnap.exists()) return;
+
+      const t = { id: tRef.id, ...tSnap.data() };
+
+      const entities = [];
+      if (t.mode === "1v1") {
+        const pSnap = await getDocs(collection(tRef, "players"));
+        pSnap.forEach(p => {
+          const d = p.data();
+          entities.push({
+            id: p.id,
+            displayName: d.gameName || d.realName || "Player"
+          });
+        });
+      } else {
+        const tmSnap = await getDocs(collection(tRef, "teams"));
+        tmSnap.forEach(tm => {
+          const d = tm.data();
+          entities.push({
+            id: tm.id,
+            displayName: d.name || "Team"
+          });
+        });
+      }
+
+      const matchesRef = collection(tRef, "matches");
+
+      if (entities.length < 2) {
+        const old = await getDocs(matchesRef);
+        for (const m of old.docs) {
+          await deleteDoc(m.ref);
+        }
+        return;
+      }
+
+      const existingSnap = await getDocs(matchesRef);
+      let hasCompleted = false;
+      existingSnap.forEach(m => {
+        const d = m.data();
+        if (d.status === "completed") hasCompleted = true;
+      });
+
+      if (!force && hasCompleted) {
+        console.log("Auto-fixtures: completed matches exist, skip auto regen.");
+        return;
+      }
+
+      for (const m of existingSnap.docs) {
+        await deleteDoc(m.ref);
+      }
+
+      const newMatches = createSimpleFixtures(
+        t,
+        entities.map(e => ({ id: e.id, displayName: e.displayName }))
+      );
+
+      for (const m of newMatches) {
+        await addDoc(matchesRef, {
+          ...m,
+          createdAt: serverTimestamp()
+        });
+      }
+
+      console.log(`Fixtures regenerated for ${t.name} — matches:`, newMatches.length);
+    }
+
+    function renderMatchesTable(wrapper, matches, t, docRef) {
+      if (!wrapper) return;
+
+      if (!matches || !matches.length) {
         wrapper.innerHTML = `
           <div class="px-3 py-3 text-[11px] text-slate-500 text-center">
-            No matches generated yet. Click <span class="text-brand-300">Generate Simple Fixtures</span> to create them.
+            No matches generated yet. Fixtures are auto-created once there are 2 or more participants.
           </div>
         `;
         return;
       }
 
-      const rows = matches.map((m, idx) => `
-        <tr class="border-b border-slate-800">
-          <td class="px-2 py-1 text-[11px] text-slate-500">${idx + 1}</td>
-          <td class="px-2 py-1 text-[11px] text-slate-400">${m.round || "-"}</td>
-          <td class="px-2 py-1 text-[11px] sm:text-xs text-slate-200">
-            ${m.homeName} <span class="text-slate-500">vs</span> ${m.awayName}
-          </td>
-          <td class="px-2 py-1">
-            <div class="flex items-center gap-1 text-[11px]">
-              <input type="number" min="0" step="1"
-                data-mid="${m.id}" data-side="home"
-                value="${m.homeScore ?? ""}"
-                class="w-12 rounded bg-slate-900 border border-slate-700 px-1 py-0.5 text-center" />
-              <span>-</span>
-              <input type="number" min="0" step="1"
-                data-mid="${m.id}" data-side="away"
-                value="${m.awayScore ?? ""}"
-                class="w-12 rounded bg-slate-900 border border-slate-700 px-1 py-0.5 text-center" />
-            </div>
-          </td>
-          <td class="px-2 py-1 text-[11px] text-slate-400">
-            ${m.status || "pending"}
-          </td>
-          <td class="px-2 py-1">
-            <button data-mid="${m.id}"
-              class="btn-save-match px-2 py-1 rounded-full bg-brand-400 hover:bg-brand-300 text-[11px] text-slate-950 font-semibold btn-glow">
-              Save
-            </button>
-          </td>
-        </tr>
-      `).join("");
+      let nextPendingId = null;
+      for (const m of matches) {
+        if (m.status !== "completed") {
+          nextPendingId = m.id;
+          break;
+        }
+      }
+
+      const rows = matches.map((m, idx) => {
+        const status = m.status || "pending";
+        const statusClass =
+          status === "completed"
+            ? "text-emerald-300"
+            : status === "live"
+              ? "text-amber-300"
+              : "text-slate-400";
+
+        const rowHighlight = m.id === nextPendingId ? "bg-slate-900/60" : "";
+
+        return `
+          <tr class="border-b border-slate-800 ${rowHighlight}" data-match-row="${m.id}">
+            <td class="px-2 py-1 text-[11px] text-slate-500">${idx + 1}</td>
+            <td class="px-2 py-1 text-[11px] text-slate-400">${m.round || "-"}</td>
+            <td class="px-2 py-1 text-[11px] sm:text-xs text-slate-200">
+              ${m.homeName} <span class="text-slate-500">vs</span> ${m.awayName}
+            </td>
+            <td class="px-2 py-1">
+              <div class="flex items-center gap-1 text-[11px]">
+                <input type="number" min="0" step="1"
+                  data-mid="${m.id}" data-side="home"
+                  value="${m.homeScore ?? ""}"
+                  class="w-12 rounded bg-slate-900 border border-slate-700 px-1 py-0.5 text-center" />
+                <span>-</span>
+                <input type="number" min="0" step="1"
+                  data-mid="${m.id}" data-side="away"
+                  value="${m.awayScore ?? ""}"
+                  class="w-12 rounded bg-slate-900 border border-slate-700 px-1 py-0.5 text-center" />
+              </div>
+            </td>
+            <td class="px-2 py-1 text-[11px] ${statusClass}">
+              ${status}
+            </td>
+            <td class="px-2 py-1">
+              <button data-mid="${m.id}"
+                class="btn-save-match px-2 py-1 rounded-full bg-brand-400 hover:bg-brand-300 text-[11px] text-slate-950 font-semibold btn-glow">
+                Save
+              </button>
+            </td>
+          </tr>
+        `;
+      }).join("");
 
       wrapper.innerHTML = `
         <table class="min-w-full text-[11px] sm:text-xs">
@@ -1141,15 +1136,12 @@
         </table>
       `;
 
-      const docRef = doc(db, "tournaments", t.id);
       const saveButtons = wrapper.querySelectorAll(".btn-save-match");
-
       saveButtons.forEach(btn => {
         btn.addEventListener("click", async () => {
           const mid = btn.getAttribute("data-mid");
           const homeInput = wrapper.querySelector(`input[data-mid="${mid}"][data-side="home"]`);
           const awayInput = wrapper.querySelector(`input[data-mid="${mid}"][data-side="away"]`);
-
           const homeScore = homeInput.value === "" ? null : Number(homeInput.value);
           const awayScore = awayInput.value === "" ? null : Number(awayInput.value);
 
@@ -1158,10 +1150,21 @@
             await updateDoc(doc(docRef, "matches", mid), {
               homeScore,
               awayScore,
-              status: (homeScore !== null && awayScore !== null) ? "completed" : "pending"
+              status: (homeScore != null && awayScore != null) ? "completed" : "pending"
             });
+
+            const row = wrapper.querySelector(`tr[data-match-row="${mid}"]`);
+            if (row) {
+              row.classList.add("match-updated");
+              setTimeout(() => row.classList.remove("match-updated"), 600);
+            }
+
             btn.textContent = "Saved";
-            setTimeout(() => { btn.textContent = "Save"; }, 900);
+            btn.classList.add("bg-emerald-400","text-slate-950");
+            setTimeout(() => {
+              btn.textContent = "Save";
+              btn.classList.remove("bg-emerald-400","text-slate-950");
+            }, 900);
           } finally {
             hideLoader();
           }
@@ -1182,8 +1185,8 @@
       }
 
       const isTeams = t.mode !== "1v1";
-
       const entities = [];
+
       if (isTeams) {
         const tmSnap = await getDocs(collection(docRef, "teams"));
         tmSnap.forEach(tm => entities.push({ id: tm.id, name: tm.data().name || "Team" }));
@@ -1192,7 +1195,7 @@
         pSnap.forEach(p => entities.push({ id: p.id, name: p.data().gameName || "Player" }));
       }
 
-      if (entities.length === 0) {
+      if (!entities.length) {
         container.innerHTML = `
           <p class="text-[11px] text-slate-400">
             No participants yet. Standings appear after matches are played.
@@ -1201,51 +1204,36 @@
         return;
       }
 
-      const mSnap = await getDocs(collection(docRef, "matches"));
-      const matches = [];
-      mSnap.forEach(m => matches.push({ id: m.id, ...m.data() }));
-
       const table = {};
       entities.forEach(e => {
-        table[e.id] = {
-          id: e.id,
-          name: e.name,
-          played: 0,
-          won: 0,
-          drawn: 0,
-          lost: 0,
-          gf: 0,
-          ga: 0,
-          pts: 0
-        };
+        table[e.id] = { id:e.id, name:e.name, played:0, won:0, drawn:0, lost:0, gf:0, ga:0, pts:0 };
       });
 
-      matches.forEach(m => {
-        if (m.status !== "completed") return;
-        if (m.homeScore == null || m.awayScore == null) return;
+      const mSnap = await getDocs(collection(docRef, "matches"));
+      mSnap.forEach(m => {
+        const d = m.data();
+        if (d.status !== "completed") return;
+        if (d.homeScore == null || d.awayScore == null) return;
 
-        const home = table[m.homeId];
-        const away = table[m.awayId];
+        const home = table[d.homeId];
+        const away = table[d.awayId];
         if (!home || !away) return;
 
-        home.played++;
-        away.played++;
-        home.gf += m.homeScore;
-        home.ga += m.awayScore;
-        away.gf += m.awayScore;
-        away.ga += m.homeScore;
+        home.played++; away.played++;
+        home.gf += d.homeScore; home.ga += d.awayScore;
+        away.gf += d.awayScore; away.ga += d.homeScore;
 
-        if (m.homeScore > m.awayScore) {
+        if (d.homeScore > d.awayScore) {
           home.won++; away.lost++; home.pts += 3;
-        } else if (m.homeScore < m.awayScore) {
+        } else if (d.homeScore < d.awayScore) {
           away.won++; home.lost++; away.pts += 3;
         } else {
-          home.drawn++; away.drawn++; home.pts += 1; away.pts += 1;
+          home.drawn++; away.drawn++; home.pts++; away.pts++;
         }
       });
 
       const rowsArr = Object.values(table).map(r => ({ ...r, gd: r.gf - r.ga }));
-      rowsArr.sort((a, b) => {
+      rowsArr.sort((a,b) => {
         if (b.pts !== a.pts) return b.pts - a.pts;
         if (b.gd !== a.gd) return b.gd - a.gd;
         return b.gf - a.gf;
@@ -1269,9 +1257,9 @@
       container.innerHTML = `
         <div class="space-y-2">
           <div class="flex items-center justify-between">
-            <h4 class="font-semibold text-slate-100 text-xs sm:text-sm">League Standings</h4>
+            <h4 class="font-semibold text-slate-100 text-xs sm:text-sm">League standings</h4>
             <p class="text-[10px] text-slate-400">
-              System: Win = 3 pts, Draw = 1 pt, Loss = 0 pts
+              Win = 3 pts · Draw = 1 pt · Loss = 0 pts
             </p>
           </div>
           <div class="overflow-x-auto rounded-2xl border border-slate-800 bg-slate-950/90">
@@ -1305,188 +1293,133 @@
       `;
     }
 
+    async function generateKnockoutFromStandings(t, topN = 4) {
+      const docRef = doc(db, "tournaments", t.id);
+      const matchesRef = collection(docRef, "matches");
+
+      const isTeams = t.mode !== "1v1";
+      const entities = [];
+      if (isTeams) {
+        const tmSnap = await getDocs(collection(docRef, "teams"));
+        tmSnap.forEach(tm => entities.push({ id: tm.id, name: tm.data().name || "Team" }));
+      } else {
+        const pSnap = await getDocs(collection(docRef, "players"));
+        pSnap.forEach(p => entities.push({ id: p.id, name: p.data().gameName || "Player" }));
+      }
+
+      const table = {};
+      entities.forEach(e => {
+        table[e.id] = { id:e.id, name:e.name, played:0, won:0, drawn:0, lost:0, gf:0, ga:0, pts:0 };
+      });
+
+      const mSnap = await getDocs(matchesRef);
+      mSnap.forEach(m => {
+        const d = m.data();
+        if (d.status !== "completed") return;
+        if (d.homeScore == null || d.awayScore == null) return;
+
+        const home = table[d.homeId];
+        const away = table[d.awayId];
+        if (!home || !away) return;
+
+        home.played++; away.played++;
+        home.gf += d.homeScore; home.ga += d.awayScore;
+        away.gf += d.awayScore; away.ga += d.homeScore;
+
+        if (d.homeScore > d.awayScore) {
+          home.won++; away.lost++; home.pts += 3;
+        } else if (d.homeScore < d.awayScore) {
+          away.won++; home.lost++; away.pts += 3;
+        } else {
+          home.drawn++; away.drawn++; home.pts++; away.pts++;
+        }
+      });
+
+      const rows = Object.values(table).map(r => ({ ...r, gd: r.gf - r.ga }));
+      rows.sort((a,b) => {
+        if (b.pts !== a.pts) return b.pts - a.pts;
+        if (b.gd !== a.gd) return b.gd - a.gd;
+        return b.gf - a.gf;
+      });
+
+      const qualified = rows.slice(0, topN);
+      if (qualified.length < 2) {
+        alert("Not enough qualified players/teams for knockout.");
+        return;
+      }
+
+      for (let i = 0; i < qualified.length / 2; i++) {
+        const home = qualified[i];
+        const away = qualified[qualified.length - 1 - i];
+        await addDoc(matchesRef, {
+          type: "knockout",
+          round: "Quarterfinal",
+          matchNumber: 100 + i,
+          entityType: isTeams ? "team" : "player",
+          homeId: home.id,
+          homeName: home.name,
+          awayId: away.id,
+          awayName: away.name,
+          homeScore: null,
+          awayScore: null,
+          status: "pending",
+          createdAt: serverTimestamp()
+        });
+      }
+      alert("Knockout bracket created from standings!");
+    }
+
     function renderBracketTab(container, t) {
       container.innerHTML = `
-        <div class="text-[11px] sm:text-xs text-slate-400 space-y-2">
-          <p>Knockout bracket visual can be added later on top of your saved matches.</p>
-          <p>You already have fixtures, scores and standings working as a base system.</p>
+        <div class="space-y-2 text-[11px] sm:text-xs text-slate-400">
+          <div class="flex items-center justify-between mb-1">
+            <p>Use the current standings to create a simple knockout bracket.</p>
+            <button id="btnFromStandings"
+              class="px-3 py-1.5 rounded-full bg-brand-400 hover:bg-brand-300 text-slate-950 text-[11px] font-semibold btn-glow">
+              Generate knockout from standings
+            </button>
+          </div>
+          <p class="text-[10px] text-slate-500">
+            This will create additional matches flagged as <span class="text-slate-200">type = "knockout"</span>.
+          </p>
         </div>
       `;
+      container.querySelector("#btnFromStandings")?.addEventListener("click", async () => {
+        await generateKnockoutFromStandings(t, 4);
+      });
     }
 
-    // Tournament detail
-    async function renderTournamentDetail() {
-      if (!selectedTournamentId) {
-        tournamentDetailEl.innerHTML =
-          "<p class='text-xs text-slate-400'>Select a tournament.</p>";
-        return;
-      }
+    async function exportTournamentPdf(t) {
+      const { jsPDF } = window.jspdf;
+      const docRef = doc(db, "tournaments", t.id);
+      const pdf = new jsPDF();
+      let line = 10;
 
-      showLoader();
-      try {
-        const docRef = doc(db, "tournaments", selectedTournamentId);
-        const snap = await getDoc(docRef);
-        if (!snap.exists()) {
-          tournamentDetailEl.innerHTML =
-            "<p class='text-xs text-red-300'>Tournament not found.</p>";
-          return;
-        }
+      pdf.setFontSize(14);
+      pdf.text(t.name || "Tournament", 10, line);
+      line += 6;
+      pdf.setFontSize(10);
+      pdf.text(`Mode: ${t.mode} | Type: ${t.type} | Platform: ${t.platform}`, 10, line);
+      line += 8;
 
-        const t = { id: snap.id, ...snap.data() };
+      pdf.setFontSize(12);
+      pdf.text("Fixtures", 10, line);
+      line += 5;
+      pdf.setFontSize(9);
 
-        let players = [];
-        let teams = [];
-        if (t.mode === "1v1") {
-          const pSnap = await getDocs(collection(docRef, "players"));
-          pSnap.forEach(p => players.push({ id: p.id, ...p.data() }));
-        } else {
-          const tmSnap = await getDocs(collection(docRef, "teams"));
-          tmSnap.forEach(tm => teams.push({ id: tm.id, ...tm.data() }));
-        }
+      const mSnap = await getDocs(collection(docRef, "matches"));
+      mSnap.forEach(m => {
+        const d = m.data();
+        const scoreTxt = (d.homeScore != null && d.awayScore != null) ? ` (${d.homeScore}-${d.awayScore})` : "";
+        const txt = `M${d.matchNumber || "?"} [R${d.round || "-"}] ${d.homeName} vs ${d.awayName}${scoreTxt}`;
+        pdf.text(txt, 10, line);
+        line += 4;
+        if (line > 280) { pdf.addPage(); line = 10; }
+      });
 
-        const participantsLabel = t.mode === "1v1" ? "Players" : "Teams";
-
-        const baseUrl = window.location.origin + window.location.pathname;
-        const viewLink = `${baseUrl}?view=${t.id}`;
-        const joinLink = `${baseUrl}?join=${t.id}`;
-
-        const typeLabel =
-          t.type === "league" ? "League" :
-          t.type === "knockout" ? "Knockout" :
-          t.type === "groups_knockout" ? "Groups + Knockout" :
-          t.type;
-
-        tournamentDetailEl.innerHTML = `
-          <div class="flex flex-col gap-4">
-            <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
-              <div class="min-w-0">
-                <h3 class="text-lg sm:text-xl font-semibold text-slate-50 truncate flex items-center gap-2">
-                  <span class="inline-flex h-6 w-6 rounded-full border border-brand-400/60 bg-brand-400/10 items-center justify-center text-[11px] text-brand-200">T</span>
-                  <span class="truncate">${t.name}</span>
-                </h3>
-                <p class="text-[11px] text-slate-400 mt-1 flex flex-wrap gap-x-2 gap-y-0.5">
-                  <span>${t.platform}</span>
-                  <span>• ${t.mode}</span>
-                  <span>• ${typeLabel}</span>
-                  ${t.startDate ? `<span>• Starts ${t.startDate}</span>` : ""}
-                </p>
-              </div>
-              <div class="text-[11px] text-slate-400">
-                ${participantsLabel}: <span class="font-semibold text-slate-100">
-                  ${t.mode === "1v1" ? players.length : teams.length}
-                </span>
-              </div>
-            </div>
-
-            <div class="border-b border-slate-800 flex flex-wrap gap-2 text-[11px] sm:text-xs">
-              <button data-tab="overview"
-                class="t-tab-btn px-3 py-1.5 rounded-t-lg border-b-2 border-brand-400 text-brand-200 bg-slate-950">
-                Overview
-              </button>
-              <button data-tab="participants"
-                class="t-tab-btn px-3 py-1.5 rounded-t-lg border-b-2 border-transparent text-slate-400 hover:text-slate-200">
-                Players & Teams
-              </button>
-              <button data-tab="matches"
-                class="t-tab-btn px-3 py-1.5 rounded-t-lg border-b-2 border-transparent text-slate-400 hover:text-slate-200">
-                Match Center
-              </button>
-              <button data-tab="standings"
-                class="t-tab-btn px-3 py-1.5 rounded-t-lg border-b-2 border-transparent text-slate-400 hover:text-slate-200">
-                Standings
-              </button>
-              <button data-tab="bracket"
-                class="t-tab-btn px-3 py-1.5 rounded-t-lg border-b-2 border-transparent text-slate-400 hover:text-slate-200">
-                Bracket
-              </button>
-            </div>
-
-            <div class="mt-3 space-y-4">
-              <div id="tab-overview" class="t-tab-panel"></div>
-              <div id="tab-participants" class="t-tab-panel hidden"></div>
-              <div id="tab-matches" class="t-tab-panel hidden"></div>
-              <div id="tab-standings" class="t-tab-panel hidden"></div>
-              <div id="tab-bracket" class="t-tab-panel hidden"></div>
-            </div>
-          </div>
-        `;
-
-        const tabButtons = tournamentDetailEl.querySelectorAll(".t-tab-btn");
-        const overviewEl = document.getElementById("tab-overview");
-        const participantsEl = document.getElementById("tab-participants");
-        const matchesEl = document.getElementById("tab-matches");
-        const standingsEl = document.getElementById("tab-standings");
-        const bracketEl = document.getElementById("tab-bracket");
-
-        renderOverviewTab(overviewEl, t, viewLink, joinLink);
-        renderParticipantsTab(participantsEl, t, players, teams);
-        await renderMatchesTab(matchesEl, t, players, teams);
-        await renderStandingsTab(standingsEl, t);
-        renderBracketTab(bracketEl, t);
-
-        tabButtons.forEach(btn => {
-          btn.addEventListener("click", () => {
-            const tab = btn.getAttribute("data-tab");
-            setActiveTab(tabButtons, tab, {
-              overviewEl,
-              participantsEl,
-              matchesEl,
-              standingsEl,
-              bracketEl
-            });
-          });
-        });
-      } finally {
-        hideLoader();
-      }
+      pdf.save((t.name || "tournament") + "_fixtures.pdf");
     }
 
-    // Create tournament submit
-    createTournamentForm.addEventListener("submit", async (e) => {
-      e.preventDefault();
-      if (!currentUser) return;
-
-      const name = document.getElementById("tName").value.trim();
-      const platform = document.getElementById("tPlatform").value;
-      const modeVal = document.getElementById("tMode").value;
-      const typeVal = document.getElementById("tType").value;
-      const startDate = document.getElementById("tStart").value;
-      const maxParticipants = Number(document.getElementById("tMaxPlayers").value) || null;
-      const notes = document.getElementById("tNotes").value.trim();
-
-      if (!name) {
-        alert("Please enter a tournament name.");
-        return;
-      }
-
-      showLoader();
-      try {
-        const docRef = await addDoc(collection(db, "tournaments"), {
-          name,
-          platform,
-          mode: modeVal,
-          type: typeVal,
-          startDate: startDate || null,
-          maxParticipants,
-          notes,
-          ownerUid: currentUser.uid,
-          createdAt: serverTimestamp(),
-          playerCount: 0,
-          teamCount: 0
-        });
-
-        await loadTournamentsForUser(currentUser.uid);
-        selectedTournamentId = docRef.id;
-        await renderTournamentDetail();
-
-        e.target.reset();
-        document.getElementById("tMaxPlayers").value = 16;
-      } finally {
-        hideLoader();
-      }
-    });
-
-    // Public helpers
     function generateTeamCode() {
       const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
       let code = "";
@@ -1513,17 +1446,22 @@
           t.type === "groups_knockout" ? "Groups + Knockout" :
           t.type;
 
+        const paidLabel = t.paidType === "paid"
+          ? `Paid • Entry ₹${t.entryFee || 0} • Prize pool ₹${t.prizePool || 0}`
+          : "Free tournament";
+
         publicTournamentInfo.innerHTML = `
           <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
             <div>
               <h2 class="text-lg sm:text-xl font-semibold text-slate-50 mb-0.5 flex items-center gap-2">
-                <span class="inline-flex h-6 w-6 rounded-full bg-brand-400/10 border border-brand-400/60 items-center justify-center text-[11px] text-brand-200">T</span>
+                <span class="inline-flex h-6 w-6 rounded-full border border-brand-400/60 bg-brand-400/10 items-center justify-center text-[11px] text-brand-200">T</span>
                 <span>${t.name}</span>
               </h2>
               <p class="text-[11px] text-slate-400 flex flex-wrap gap-x-2 gap-y-0.5">
                 <span>${t.platform}</span>
                 <span>• ${t.mode}</span>
                 <span>• ${typeLabel}</span>
+                <span>• ${paidLabel}</span>
                 ${t.startDate ? `<span>• Starts ${t.startDate}</span>` : ""}
               </p>
               ${t.notes ? `<p class="text-[11px] text-slate-300 mt-1">${t.notes}</p>` : ""}
@@ -1546,8 +1484,9 @@
 
     async function renderPublicView(t) {
       const docRef = doc(db, "tournaments", t.id);
-      let players = [];
-      let teams = [];
+      const players = [];
+      const teams   = [];
+
       if (t.mode === "1v1") {
         const pSnap = await getDocs(collection(docRef, "players"));
         pSnap.forEach(p => players.push({ id: p.id, ...p.data() }));
@@ -1583,7 +1522,7 @@
                 <thead class="bg-slate-900 text-slate-300">
                   <tr>
                     <th class="px-2 py-1 text-left w-6">#</th>
-                    <th class="px-2 py-1 text-left">Game Name</th>
+                    <th class="px-2 py-1 text-left">Game name</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1606,7 +1545,7 @@
                   <tr>
                     <th class="px-2 py-1 text-left w-6">#</th>
                     <th class="px-2 py-1 text-left">Team</th>
-                    <th class="px-2 py-1 text-left">Members (Game Name)</th>
+                    <th class="px-2 py-1 text-left">Members (Game name)</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1628,176 +1567,170 @@
     async function renderPublicJoin(t) {
       const docRef = doc(db, "tournaments", t.id);
 
-      let currentCount = 0;
-      if (t.mode === "1v1") {
-        const pSnap = await getDocs(collection(docRef, "players"));
-        pSnap.forEach(() => currentCount++);
-      } else {
-        const tmSnap = await getDocs(collection(docRef, "teams"));
-        tmSnap.forEach(() => currentCount++);
-      }
-      const max = t.maxParticipants || 0;
-      const slotsLeft = max ? (max - currentCount) : null;
-
-      let statusText = "";
-      if (max) {
-        statusText = slotsLeft > 0
-          ? `<span class="text-emerald-300 font-semibold">${slotsLeft}</span> spots remaining (of ${max}).`
-          : `<span class="text-red-300 font-semibold">No spots remaining.</span>`;
-      } else {
-        statusText = "Open registration (no limit set by organiser).";
-      }
-
-      let joinContent = "";
-
-      if (t.mode === "1v1") {
-        joinContent = `
-          <div class="space-y-3">
-            <div>
-              <h3 class="font-semibold text-slate-100 text-sm">Join as Player (1v1)</h3>
-              <p class="text-[11px] text-slate-400 mt-1">${statusText}</p>
-            </div>
-            <form id="joinPlayerForm" class="space-y-2 text-[11px] sm:text-xs">
-              <div>
-                <label class="block text-slate-300 mb-1">Real Name</label>
-                <input id="joinRealName" type="text" required
-                       class="w-full rounded-xl bg-slate-950 border border-slate-800 px-3 py-2 focus:outline-none focus:ring-1 focus:ring-brand-400" />
-              </div>
-              <div>
-                <label class="block text-slate-300 mb-1">Game Name (shown in tournament)</label>
-                <input id="joinGameName" type="text" required
-                       class="w-full rounded-xl bg-slate-950 border border-slate-800 px-3 py-2 focus:outline-none focus:ring-1 focus:ring-brand-400" />
-              </div>
-              <div>
-                <label class="block text-slate-300 mb-1">Game ID</label>
-                <input id="joinGameId" type="text" required
-                       class="w-full rounded-xl bg-slate-950 border border-slate-800 px-3 py-2 focus:outline-none focus:ring-1 focus:ring-brand-400" />
-              </div>
-              <div>
-                <label class="block text-slate-300 mb-1">Mobile Number</label>
-                <input id="joinMobile" type="tel" required
-                       class="w-full rounded-xl bg-slate-950 border border-slate-800 px-3 py-2 focus:outline-none focus:ring-1 focus:ring-brand-400" />
-              </div>
-              <p id="joinPlayerMsg" class="text-[11px] text-emerald-300 min-h-[1.25rem]"></p>
-              <button type="submit"
-                      class="w-full rounded-xl bg-brand-400 hover:bg-brand-300 text-slate-950 font-semibold py-2 text-xs sm:text-sm shadow-brand-glow btn-glow">
-                Book My Spot
-              </button>
-            </form>
+      const joinContentFor1v1 = `
+        <div class="space-y-3">
+          <div>
+            <h3 class="font-semibold text-slate-100 text-sm">Join as player (1v1)</h3>
+            <p id="public-slots-left" class="text-[11px] text-slate-400 mt-1"></p>
           </div>
-        `;
-      } else {
-        const teamSize = t.mode === "2v2" ? 2 : 3;
-        joinContent = `
-          <div class="space-y-4">
+          <form id="joinPlayerForm" class="space-y-2 text-[11px] sm:text-xs">
             <div>
-              <h3 class="font-semibold text-slate-100 text-sm">Team Registration (${t.mode})</h3>
-              <p class="text-[11px] text-slate-400 mt-1">${statusText}</p>
+              <label class="block text-slate-300 mb-1">Real name</label>
+              <input id="joinRealName" type="text" required
+                     class="w-full rounded-2xl bg-slate-950 border border-slate-800 px-3 py-2 focus:outline-none focus:ring-1 focus:ring-brand-400" />
             </div>
-            <div class="grid md:grid-cols-2 gap-4">
-              <!-- Create team -->
-              <div class="space-y-2">
-                <h4 class="font-semibold text-slate-100 text-xs">Create Team (Captain)</h4>
-                <form id="createTeamForm" class="space-y-2 text-[11px] sm:text-xs">
-                  <div>
-                    <label class="block text-slate-300 mb-1">Team Name</label>
-                    <input id="teamNameJoin" type="text" required
-                           class="w-full rounded-xl bg-slate-950 border border-slate-800 px-3 py-2 focus:outline-none focus:ring-1 focus:ring-brand-400" />
-                  </div>
-                  <div>
-                    <label class="block text-slate-300 mb-1">Captain Real Name</label>
-                    <input id="teamCaptainRealNameJoin" type="text" required
-                           class="w-full rounded-xl bg-slate-950 border border-slate-800 px-3 py-2 focus:outline-none focus:ring-1 focus:ring-brand-400" />
-                  </div>
-                  <div>
-                    <label class="block text-slate-300 mb-1">Captain Game Name (shown in tournament)</label>
-                    <input id="teamCaptainGameNameJoin" type="text" required
-                           class="w-full rounded-xl bg-slate-950 border border-slate-800 px-3 py-2 focus:outline-none focus:ring-1 focus:ring-brand-400" />
-                  </div>
-                  <div>
-                    <label class="block text-slate-300 mb-1">Captain Game ID</label>
-                    <input id="teamCaptainGameIdJoin" type="text" required
-                           class="w-full rounded-xl bg-slate-950 border border-slate-800 px-3 py-2 focus:outline-none focus:ring-1 focus:ring-brand-400" />
-                  </div>
-                  <div>
-                    <label class="block text-slate-300 mb-1">Captain Mobile Number</label>
-                    <input id="teamCaptainMobileJoin" type="tel" required
-                           class="w-full rounded-xl bg-slate-950 border border-slate-800 px-3 py-2 focus:outline-none focus:ring-1 focus:ring-brand-400" />
-                  </div>
-                  <p class="text-[10px] text-slate-400">
-                    A Team Code will be generated. Share it with teammates so they can join using their own details.
-                  </p>
-                  <p id="createTeamMsg" class="text-[11px] text-emerald-300 min-h-[1.25rem]"></p>
-                  <button type="submit"
-                          class="w-full rounded-xl bg-brand-400 hover:bg-brand-300 text-slate-950 font-semibold py-2 text-xs sm:text-sm shadow-brand-glow btn-glow">
-                    Create Team
-                  </button>
-                </form>
-              </div>
+            <div>
+              <label class="block text-slate-300 mb-1">Game name (shown in tournament)</label>
+              <input id="joinGameName" type="text" required
+                     class="w-full rounded-2xl bg-slate-950 border border-slate-800 px-3 py-2 focus:outline-none focus:ring-1 focus:ring-brand-400" />
+            </div>
+            <div>
+              <label class="block text-slate-300 mb-1">Game ID</label>
+              <input id="joinGameId" type="text" required
+                     class="w-full rounded-2xl bg-slate-950 border border-slate-800 px-3 py-2 focus:outline-none focus:ring-1 focus:ring-brand-400" />
+            </div>
+            <div>
+              <label class="block text-slate-300 mb-1">Mobile number</label>
+              <input id="joinMobile" type="tel" required
+                     class="w-full rounded-2xl bg-slate-950 border border-slate-800 px-3 py-2 focus:outline-none focus:ring-1 focus:ring-brand-400" />
+            </div>
+            <p id="joinPlayerMsg" class="text-[11px] text-emerald-300 min-h-[1.25rem]"></p>
+            <button type="submit"
+                    class="w-full rounded-2xl bg-brand-400 hover:bg-brand-300 text-slate-950 font-semibold py-2 text-xs sm:text-sm shadow-brand-glow btn-glow">
+              Book my spot
+            </button>
+          </form>
+        </div>
+      `;
 
-              <!-- Join existing team -->
-              <div class="space-y-2">
-                <h4 class="font-semibold text-slate-100 text-xs">Join Existing Team</h4>
-                <form id="joinTeamForm" class="space-y-2 text-[11px] sm:text-xs">
-                  <div>
-                    <label class="block text-slate-300 mb-1">Real Name</label>
-                    <input id="joinTeamRealName" type="text" required
-                           class="w-full rounded-xl bg-slate-950 border border-slate-800 px-3 py-2 focus:outline-none focus:ring-1 focus:ring-brand-400" />
-                  </div>
-                  <div>
-                    <label class="block text-slate-300 mb-1">Game Name (shown in tournament)</label>
-                    <input id="joinTeamGameName" type="text" required
-                           class="w-full rounded-xl bg-slate-950 border border-slate-800 px-3 py-2 focus:outline-none focus:ring-1 focus:ring-brand-400" />
-                  </div>
-                  <div>
-                    <label class="block text-slate-300 mb-1">Game ID</label>
-                    <input id="joinTeamGameId" type="text" required
-                           class="w-full rounded-xl bg-slate-950 border border-slate-800 px-3 py-2 focus:outline-none focus:ring-1 focus:ring-brand-400" />
-                  </div>
-                  <div>
-                    <label class="block text-slate-300 mb-1">Mobile Number</label>
-                    <input id="joinTeamMobile" type="tel" required
-                           class="w-full rounded-xl bg-slate-950 border border-slate-800 px-3 py-2 focus:outline-none focus:ring-1 focus:ring-brand-400" />
-                  </div>
-                  <div>
-                    <label class="block text-slate-300 mb-1">Team Code</label>
-                    <input id="joinTeamCode" type="text" required
-                           class="w-full rounded-xl bg-slate-950 border border-slate-800 px-3 py-2 uppercase focus:outline-none focus:ring-1 focus:ring-brand-400" />
-                  </div>
-                  <p id="joinTeamMsg" class="text-[11px] text-emerald-300 min-h-[1.25rem]"></p>
-                  <button type="submit"
-                          class="w-full rounded-xl bg-brand-400 hover:bg-brand-300 text-slate-950 font-semibold py-2 text-xs sm:text-sm shadow-brand-glow btn-glow">
-                    Join Team
-                  </button>
-                </form>
-              </div>
+      const teamSize = t.mode === "2v2" ? 2 : 3;
+      const joinContentForTeams = `
+        <div class="space-y-4">
+          <div>
+            <h3 class="font-semibold text-slate-100 text-sm">Team registration (${t.mode})</h3>
+            <p id="public-slots-left" class="text-[11px] text-slate-400 mt-1"></p>
+          </div>
+          <div class="grid md:grid-cols-2 gap-4">
+            <div class="space-y-2">
+              <h4 class="font-semibold text-slate-100 text-xs">Create team (captain)</h4>
+              <form id="createTeamForm" class="space-y-2 text-[11px] sm:text-xs">
+                <div>
+                  <label class="block text-slate-300 mb-1">Team name</label>
+                  <input id="teamNameJoin" type="text" required
+                         class="w-full rounded-2xl bg-slate-950 border border-slate-800 px-3 py-2 focus:outline-none focus:ring-1 focus:ring-brand-400" />
+                </div>
+                <div>
+                  <label class="block text-slate-300 mb-1">Captain real name</label>
+                  <input id="teamCaptainRealNameJoin" type="text" required
+                         class="w-full rounded-2xl bg-slate-950 border border-slate-800 px-3 py-2 focus:outline-none focus:ring-1 focus:ring-brand-400" />
+                </div>
+                <div>
+                  <label class="block text-slate-300 mb-1">Captain game name</label>
+                  <input id="teamCaptainGameNameJoin" type="text" required
+                         class="w-full rounded-2xl bg-slate-950 border border-slate-800 px-3 py-2 focus:outline-none focus:ring-1 focus:ring-brand-400" />
+                </div>
+                <div>
+                  <label class="block text-slate-300 mb-1">Captain game ID</label>
+                  <input id="teamCaptainGameIdJoin" type="text" required
+                         class="w-full rounded-2xl bg-slate-950 border border-slate-800 px-3 py-2 focus:outline-none focus:ring-1 focus:ring-brand-400" />
+                </div>
+                <div>
+                  <label class="block text-slate-300 mb-1">Captain mobile</label>
+                  <input id="teamCaptainMobileJoin" type="tel" required
+                         class="w-full rounded-2xl bg-slate-950 border border-slate-800 px-3 py-2 focus:outline-none focus:ring-1 focus:ring-brand-400" />
+                </div>
+                <p class="text-[10px] text-slate-400">
+                  A team code will be generated. Share it with teammates so they can join using their own details.
+                </p>
+                <p id="createTeamMsg" class="text-[11px] text-emerald-300 min-h-[1.25rem]"></p>
+                <button type="submit"
+                        class="w-full rounded-2xl bg-brand-400 hover:bg-brand-300 text-slate-950 font-semibold py-2 text-xs sm:text-sm shadow-brand-glow btn-glow">
+                  Create team
+                </button>
+              </form>
+            </div>
+
+            <div class="space-y-2">
+              <h4 class="font-semibold text-slate-100 text-xs">Join existing team</h4>
+              <form id="joinTeamForm" class="space-y-2 text-[11px] sm:text-xs">
+                <div>
+                  <label class="block text-slate-300 mb-1">Real name</label>
+                  <input id="joinTeamRealName" type="text" required
+                         class="w-full rounded-2xl bg-slate-950 border border-slate-800 px-3 py-2 focus:outline-none focus:ring-1 focus:ring-brand-400" />
+                </div>
+                <div>
+                  <label class="block text-slate-300 mb-1">Game name</label>
+                  <input id="joinTeamGameName" type="text" required
+                         class="w-full rounded-2xl bg-slate-950 border border-slate-800 px-3 py-2 focus:outline-none focus:ring-1 focus:ring-brand-400" />
+                </div>
+                <div>
+                  <label class="block text-slate-300 mb-1">Game ID</label>
+                  <input id="joinTeamGameId" type="text" required
+                         class="w-full rounded-2xl bg-slate-950 border border-slate-800 px-3 py-2 focus:outline-none focus:ring-1 focus:ring-brand-400" />
+                </div>
+                <div>
+                  <label class="block text-slate-300 mb-1">Mobile</label>
+                  <input id="joinTeamMobile" type="tel" required
+                         class="w-full rounded-2xl bg-slate-950 border border-slate-800 px-3 py-2 focus:outline-none focus:ring-1 focus:ring-brand-400" />
+                </div>
+                <div>
+                  <label class="block text-slate-300 mb-1">Team code</label>
+                  <input id="joinTeamCode" type="text" required
+                         class="w-full rounded-2xl bg-slate-950 border border-slate-800 px-3 py-2 uppercase focus:outline-none focus:ring-1 focus:ring-brand-400" />
+                </div>
+                <p id="joinTeamMsg" class="text-[11px] text-emerald-300 min-h-[1.25rem]"></p>
+                <button type="submit"
+                        class="w-full rounded-2xl bg-brand-400 hover:bg-brand-300 text-slate-950 font-semibold py-2 text-xs sm:text-sm shadow-brand-glow btn-glow">
+                  Join team
+                </button>
+              </form>
             </div>
           </div>
-        `;
-      }
-
-      publicModeContent.innerHTML = joinContent;
+        </div>
+      `;
 
       if (t.mode === "1v1") {
-        const joinForm = document.getElementById("joinPlayerForm");
-        const realNameInput = document.getElementById("joinRealName");
-        const gameNameInput = document.getElementById("joinGameName");
-        const gameIdInput = document.getElementById("joinGameId");
-        const mobileInput = document.getElementById("joinMobile");
-        const msg = document.getElementById("joinPlayerMsg");
+        publicModeContent.innerHTML = joinContentFor1v1;
+      } else {
+        publicModeContent.innerHTML = joinContentForTeams;
+      }
+
+      // LIVE slots left
+      onSnapshot(docRef, (snap) => {
+        const data = snap.data();
+        if (!data) return;
+        const max = data.maxParticipants || 0;
+        const current = (t.mode === "1v1")
+          ? (data.playerCount || 0)
+          : (data.teamCount || 0);
+        const slotsLeft = max ? (max - current) : null;
+
+        const infoBox = document.getElementById("public-slots-left");
+        if (infoBox) {
+          infoBox.innerHTML = max
+            ? `<span class="text-brand-300 font-semibold">${slotsLeft}</span> spots remaining (of ${max})`
+            : `Open registration (no limit set by organiser).`;
+        }
+      });
+
+      // 1v1 join
+      if (t.mode === "1v1") {
+        const joinForm       = document.getElementById("joinPlayerForm");
+        const realNameInput  = document.getElementById("joinRealName");
+        const gameNameInput  = document.getElementById("joinGameName");
+        const gameIdInput    = document.getElementById("joinGameId");
+        const mobileInput    = document.getElementById("joinMobile");
+        const msg            = document.getElementById("joinPlayerMsg");
 
         joinForm.addEventListener("submit", async (e) => {
           e.preventDefault();
           msg.textContent = "";
-          if (max && slotsLeft <= 0) {
-            msg.textContent = "No spots remaining.";
-            return;
-          }
 
           const realName = realNameInput.value.trim();
           const gameName = gameNameInput.value.trim();
-          const gameId = gameIdInput.value.trim();
-          const mobile = mobileInput.value.trim();
+          const gameId   = gameIdInput.value.trim();
+          const mobile   = mobileInput.value.trim();
+
           if (!realName || !gameName || !gameId || !mobile) {
             msg.textContent = "Please fill all fields.";
             return;
@@ -1805,6 +1738,17 @@
 
           showLoader();
           try {
+            const latestSnap = await getDoc(docRef);
+            const data = latestSnap.data() || {};
+            const max = data.maxParticipants || 0;
+            const currentPlayers = data.playerCount || 0;
+
+            if (max && currentPlayers >= max) {
+              msg.textContent = "No spots remaining.";
+              hideLoader();
+              return;
+            }
+
             await addDoc(collection(docRef, "players"), {
               realName,
               gameName,
@@ -1813,102 +1757,107 @@
               createdAt: serverTimestamp()
             });
 
-            await updateDoc(docRef, {
-              playerCount: (t.playerCount || 0) + 1
-            });
+            await updateDoc(docRef, { playerCount: currentPlayers + 1 });
+            await regenerateFixturesById(t.id);
 
+            showPopup("Your spot has been successfully booked!");
             msg.textContent = "Spot booked successfully!";
             realNameInput.value = "";
             gameNameInput.value = "";
-            gameIdInput.value = "";
-            mobileInput.value = "";
+            gameIdInput.value   = "";
+            mobileInput.value   = "";
           } finally {
             hideLoader();
           }
         });
       } else {
-        const teamSize = t.mode === "2v2" ? 2 : 3;
-
-        const createTeamForm = document.getElementById("createTeamForm");
-        const createTeamMsg = document.getElementById("createTeamMsg");
-        const teamNameJoin = document.getElementById("teamNameJoin");
-        const teamCaptainRealNameJoin = document.getElementById("teamCaptainRealNameJoin");
-        const teamCaptainGameNameJoin = document.getElementById("teamCaptainGameNameJoin");
-        const teamCaptainGameIdJoin = document.getElementById("teamCaptainGameIdJoin");
-        const teamCaptainMobileJoin = document.getElementById("teamCaptainMobileJoin");
+        // Teams join & create
+        const createTeamForm            = document.getElementById("createTeamForm");
+        const createTeamMsg             = document.getElementById("createTeamMsg");
+        const teamNameJoin              = document.getElementById("teamNameJoin");
+        const teamCaptainRealNameJoin   = document.getElementById("teamCaptainRealNameJoin");
+        const teamCaptainGameNameJoin   = document.getElementById("teamCaptainGameNameJoin");
+        const teamCaptainGameIdJoin     = document.getElementById("teamCaptainGameIdJoin");
+        const teamCaptainMobileJoin     = document.getElementById("teamCaptainMobileJoin");
 
         createTeamForm.addEventListener("submit", async (e) => {
           e.preventDefault();
           createTeamMsg.textContent = "";
 
-          if (max && slotsLeft <= 0) {
-            createTeamMsg.textContent = "No team slots remaining.";
-            return;
-          }
-
-          const teamName = teamNameJoin.value.trim();
-          const capReal = teamCaptainRealNameJoin.value.trim();
-          const capGameName = teamCaptainGameNameJoin.value.trim();
-          const capGameId = teamCaptainGameIdJoin.value.trim();
+          const teamName  = teamNameJoin.value.trim();
+          const capReal   = teamCaptainRealNameJoin.value.trim();
+          const capGName  = teamCaptainGameNameJoin.value.trim();
+          const capGId    = teamCaptainGameIdJoin.value.trim();
           const capMobile = teamCaptainMobileJoin.value.trim();
 
-          if (!teamName || !capReal || !capGameName || !capGameId || !capMobile) {
+          if (!teamName || !capReal || !capGName || !capGId || !capMobile) {
             createTeamMsg.textContent = "All captain fields are required.";
             return;
           }
 
-          const teamCode = generateTeamCode();
-
           showLoader();
           try {
+            const latestSnap = await getDoc(docRef);
+            const data = latestSnap.data() || {};
+            const max = data.maxParticipants || 0;
+            const currentTeams = data.teamCount || 0;
+
+            if (max && currentTeams >= max) {
+              createTeamMsg.textContent = "No team slots remaining.";
+              hideLoader();
+              return;
+            }
+
+            const teamCode = generateTeamCode();
+
             await addDoc(collection(docRef, "teams"), {
               name: teamName,
               members: [{
                 realName: capReal,
-                gameName: capGameName,
-                gameId: capGameId,
-                mobile: capMobile
+                gameName: capGName,
+                gameId:   capGId,
+                mobile:   capMobile
               }],
               teamCode,
               maxSize: teamSize,
               createdAt: serverTimestamp()
             });
 
-            await updateDoc(docRef, {
-              teamCount: (t.teamCount || 0) + 1
-            });
+            await updateDoc(docRef, { teamCount: currentTeams + 1 });
+            await regenerateFixturesById(t.id);
 
+            showPopup("Team created successfully! Share the team code with your teammates.");
             createTeamMsg.textContent =
-              `Team created! Share this Team Code with your teammates: ${teamCode}`;
-            teamNameJoin.value = "";
-            teamCaptainRealNameJoin.value = "";
-            teamCaptainGameNameJoin.value = "";
-            teamCaptainGameIdJoin.value = "";
-            teamCaptainMobileJoin.value = "";
+              `Team created! Share this team code with your teammates: ${teamCode}`;
+            teamNameJoin.value              = "";
+            teamCaptainRealNameJoin.value   = "";
+            teamCaptainGameNameJoin.value   = "";
+            teamCaptainGameIdJoin.value     = "";
+            teamCaptainMobileJoin.value     = "";
           } finally {
             hideLoader();
           }
         });
 
-        const joinTeamForm = document.getElementById("joinTeamForm");
-        const joinTeamRealName = document.getElementById("joinTeamRealName");
-        const joinTeamGameName = document.getElementById("joinTeamGameName");
-        const joinTeamGameId = document.getElementById("joinTeamGameId");
+        const joinTeamForm   = document.getElementById("joinTeamForm");
+        const joinTeamReal   = document.getElementById("joinTeamRealName");
+        const joinTeamGName  = document.getElementById("joinTeamGameName");
+        const joinTeamGId    = document.getElementById("joinTeamGameId");
         const joinTeamMobile = document.getElementById("joinTeamMobile");
-        const joinTeamCode = document.getElementById("joinTeamCode");
-        const joinTeamMsg = document.getElementById("joinTeamMsg");
+        const joinTeamCode   = document.getElementById("joinTeamCode");
+        const joinTeamMsg    = document.getElementById("joinTeamMsg");
 
         joinTeamForm.addEventListener("submit", async (e) => {
           e.preventDefault();
           joinTeamMsg.textContent = "";
 
-          const realName = joinTeamRealName.value.trim();
-          const gameName = joinTeamGameName.value.trim();
-          const gameId = joinTeamGameId.value.trim();
-          const mobile = joinTeamMobile.value.trim();
-          const codeInput = joinTeamCode.value.trim().toUpperCase();
+          const realName = joinTeamReal.value.trim();
+          const gameName = joinTeamGName.value.trim();
+          const gameId   = joinTeamGId.value.trim();
+          const mobile   = joinTeamMobile.value.trim();
+          const code     = joinTeamCode.value.trim().toUpperCase();
 
-          if (!realName || !gameName || !gameId || !mobile || !codeInput) {
+          if (!realName || !gameName || !gameId || !mobile || !code) {
             joinTeamMsg.textContent = "All fields are required.";
             return;
           }
@@ -1916,7 +1865,7 @@
           showLoader();
           try {
             const tmSnap = await getDocs(
-              query(collection(docRef, "teams"), where("teamCode", "==", codeInput))
+              query(collection(docRef, "teams"), where("teamCode", "==", code))
             );
             if (tmSnap.empty) {
               joinTeamMsg.textContent = "Invalid team code.";
@@ -1943,12 +1892,13 @@
             members.push({ realName, gameName, gameId, mobile });
             await updateDoc(teamDoc.ref, { members });
 
+            showPopup("You successfully joined the team!");
             joinTeamMsg.textContent = "You have joined the team successfully!";
-            joinTeamRealName.value = "";
-            joinTeamGameName.value = "";
-            joinTeamGameId.value = "";
+            joinTeamReal.value   = "";
+            joinTeamGName.value  = "";
+            joinTeamGId.value    = "";
             joinTeamMobile.value = "";
-            joinTeamCode.value = "";
+            joinTeamCode.value   = "";
           } finally {
             hideLoader();
           }
@@ -1956,7 +1906,292 @@
       }
     }
 
-    // Auth state handling
+    async function renderTournamentDetailRealtime() {
+      if (!selectedTournamentId) {
+        tournamentDetailEl.innerHTML =
+          "<p class='text-[11px] text-slate-400'>Select a tournament.</p>";
+        return;
+      }
+      const tid = selectedTournamentId;
+      const tRef = doc(db, "tournaments", tid);
+
+      showLoader();
+      try {
+        const snap = await getDoc(tRef);
+        if (!snap.exists()) {
+          tournamentDetailEl.innerHTML =
+            "<p class='text-[11px] text-red-300'>Tournament not found.</p>";
+          return;
+        }
+        const t = { id: snap.id, ...snap.data() };
+
+        const baseUrl = window.location.origin + window.location.pathname;
+        const viewLink = `${baseUrl}?view=${t.id}`;
+        const joinLink = `${baseUrl}?join=${t.id}`;
+        const typeLabel =
+          t.type === "league" ? "League" :
+          t.type === "knockout" ? "Knockout" :
+          t.type === "groups_knockout" ? "Groups + Knockout" :
+          t.type;
+
+        tournamentDetailEl.innerHTML = `
+          <div class="flex flex-col gap-4">
+            <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
+              <div class="min-w-0">
+                <h3 class="text-lg sm:text-xl font-semibold text-slate-50 truncate flex items-center gap-2">
+                  <span class="inline-flex h-6 w-6 rounded-full border border-brand-400/60 bg-brand-400/10 items-center justify-center text-[11px] text-brand-200">T</span>
+                  <span class="truncate">${t.name}</span>
+                </h3>
+                <p class="text-[11px] text-slate-400 mt-1 flex flex-wrap gap-x-2 gap-y-0.5">
+                  <span>${t.platform}</span>
+                  <span>• ${t.mode}</span>
+                  <span>• ${typeLabel}</span>
+                  ${t.startDate ? `<span>• Starts ${t.startDate}</span>` : ""}
+                </p>
+              </div>
+              <div class="text-[11px] text-slate-400">
+                <span id="participantLabel"></span>
+              </div>
+            </div>
+
+            <div class="border-b border-slate-800 flex flex-wrap gap-2 text-[11px] sm:text-xs">
+              <button data-tab="overview"
+                class="t-tab-btn px-3 py-1.5 rounded-t-lg border-b-2 border-brand-400 text-brand-200 bg-slate-950">
+                Overview
+              </button>
+              <button data-tab="participants"
+                class="t-tab-btn px-3 py-1.5 rounded-t-lg border-b-2 border-transparent text-slate-400 hover:text-slate-200">
+                Players & Teams
+              </button>
+              <button data-tab="matches"
+                class="t-tab-btn px-3 py-1.5 rounded-t-lg border-b-2 border-transparent text-slate-400 hover:text-slate-200">
+                Match center
+              </button>
+              <button data-tab="standings"
+                class="t-tab-btn px-3 py-1.5 rounded-t-lg border-b-2 border-transparent text-slate-400 hover:text-slate-200">
+                Standings
+              </button>
+              <button data-tab="bracket"
+                class="t-tab-btn px-3 py-1.5 rounded-t-lg border-b-2 border-transparent text-slate-400 hover:text-slate-200">
+                Bracket
+              </button>
+            </div>
+
+            <div class="mt-3 space-y-4">
+              <div id="tab-overview"     class="t-tab-panel"></div>
+              <div id="tab-participants" class="t-tab-panel hidden"></div>
+              <div id="tab-matches"      class="t-tab-panel hidden"></div>
+              <div id="tab-standings"    class="t-tab-panel hidden"></div>
+              <div id="tab-bracket"      class="t-tab-panel hidden"></div>
+            </div>
+          </div>
+        `;
+
+        const tabButtons      = tournamentDetailEl.querySelectorAll(".t-tab-btn");
+        const overviewEl      = document.getElementById("tab-overview");
+        const participantsEl  = document.getElementById("tab-participants");
+        const matchesEl       = document.getElementById("tab-matches");
+        const standingsEl     = document.getElementById("tab-standings");
+        const bracketEl       = document.getElementById("tab-bracket");
+        const participantLabel= document.getElementById("participantLabel");
+
+        renderOverviewTab(overviewEl, t, viewLink, joinLink);
+        renderBracketTab(bracketEl, t);
+
+        tabButtons.forEach(btn => {
+          btn.addEventListener("click", () => {
+            const tab = btn.getAttribute("data-tab");
+            setActiveTab(tabButtons, tab, {
+              overviewEl,
+              participantsEl,
+              matchesEl,
+              standingsEl,
+              bracketEl
+            });
+          });
+        });
+
+        matchesEl.innerHTML = `
+          <div class="space-y-3 text-[11px] sm:text-xs">
+            <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
+              <div>
+                <h4 class="font-semibold text-slate-100 text-sm">Match center</h4>
+                <p class="text-slate-400">
+                  Fixtures auto-generate based on participants. You can override them manually if needed.
+                </p>
+              </div>
+              <div class="flex flex-wrap gap-2">
+                <button id="btnGenerateFixtures"
+                  class="px-3 py-1.5 rounded-full bg-brand-400 hover:bg-brand-300 text-slate-950 font-semibold shadow-brand-glow btn-glow">
+                  Regenerate fixtures (manual)
+                </button>
+              </div>
+            </div>
+            <div id="matchesTableWrapper" class="overflow-x-auto rounded-2xl border border-slate-800 bg-slate-950/90"></div>
+          </div>
+        `;
+        const btnGenerate    = matchesEl.querySelector("#btnGenerateFixtures");
+        const matchesWrapper = matchesEl.querySelector("#matchesTableWrapper");
+
+        let currentPlayers = [];
+        let currentTeams   = [];
+        let currentMatches = [];
+
+        const unsubPlayers = onSnapshot(
+          collection(tRef, "players"),
+          async snap => {
+            currentPlayers = [];
+            snap.forEach(d => currentPlayers.push({ id: d.id, ...d.data() }));
+
+            const label = (t.mode === "1v1" ? "Players" : "Teams");
+            const count = (t.mode === "1v1" ? currentPlayers.length : currentTeams.length);
+            participantLabel.textContent = `${label}: ${count}`;
+
+            renderParticipantsTab(participantsEl, t, currentPlayers, currentTeams);
+
+            if (t.mode === "1v1") {
+              try {
+                await regenerateFixturesById(t.id);
+              } catch (err) {
+                console.error("Auto fixture regen (players) error:", err);
+              }
+            }
+          }
+        );
+
+        const unsubTeams = onSnapshot(
+          collection(tRef, "teams"),
+          async snap => {
+            currentTeams = [];
+            snap.forEach(d => currentTeams.push({ id: d.id, ...d.data() }));
+
+            const label = (t.mode === "1v1" ? "Players" : "Teams");
+            const count = (t.mode === "1v1" ? currentPlayers.length : currentTeams.length);
+            participantLabel.textContent = `${label}: ${count}`;
+
+            renderParticipantsTab(participantsEl, t, currentPlayers, currentTeams);
+
+            if (t.mode !== "1v1") {
+              try {
+                await regenerateFixturesById(t.id);
+              } catch (err) {
+                console.error("Auto fixture regen (teams) error:", err);
+              }
+            }
+          }
+        );
+
+        const unsubMatches = onSnapshot(
+          query(collection(tRef, "matches"), orderBy("round","asc")),
+          async snap => {
+            currentMatches = [];
+            snap.forEach(d => currentMatches.push({ id: d.id, ...d.data() }));
+            renderMatchesTable(matchesWrapper, currentMatches, t, tRef);
+            await renderStandingsTab(standingsEl, t);
+          }
+        );
+
+        currentTournamentUnsubs.push(unsubPlayers, unsubTeams, unsubMatches);
+
+        btnGenerate.addEventListener("click", async () => {
+          const ok = confirm(
+            "This will recreate all fixtures and may clear existing results. Continue?"
+          );
+          if (!ok) return;
+
+          showLoader();
+          try {
+            await regenerateFixturesById(t.id, true);
+          } finally {
+            hideLoader();
+          }
+        });
+
+        renderParticipantsTab(participantsEl, t, currentPlayers, currentTeams);
+        await renderStandingsTab(standingsEl, t);
+
+      } finally {
+        hideLoader();
+      }
+    }
+
+    // ===== Create tournament (organiser) =====
+    createTournamentForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      if (!currentUser) return;
+
+      const name     = document.getElementById("tName").value.trim();
+      const platform = document.getElementById("tPlatform").value;
+      const modeVal  = document.getElementById("tMode").value;
+      const typeVal  = document.getElementById("tType").value;
+      const startDate= document.getElementById("tStart").value;
+      const maxPart  = Number(document.getElementById("tMaxPlayers").value) || null;
+      const notes    = document.getElementById("tNotes").value.trim();
+
+      const paidType   = document.getElementById("tPaidType")?.value || "free";
+      const entryFee   = paidType === "paid"
+        ? Number(document.getElementById("tEntryFee")?.value || 0)
+        : 0;
+      const prizePool  = paidType === "paid"
+        ? Number(document.getElementById("tPrizePool")?.value || 0)
+        : 0;
+
+      if (!name) {
+        alert("Please enter a tournament name.");
+        return;
+      }
+
+      showLoader();
+      try {
+        const docRef = await addDoc(collection(db, "tournaments"), {
+          name,
+          platform,
+          mode: modeVal,
+          type: typeVal,
+          startDate: startDate || null,
+          maxParticipants: maxPart,
+          notes,
+
+          // owner + admin list
+          ownerUid: currentUser.uid,
+          adminList: [currentUser.uid],
+
+          // paid/free info
+          paidType,
+          entryFee,
+          prizePool,
+
+          // counters
+          playerCount: 0,
+          teamCount: 0,
+
+          createdAt: serverTimestamp()
+        });
+        await loadTournamentsForUser(currentUser.uid);
+        selectedTournamentId = docRef.id;
+        clearCurrentTournamentListeners();
+        await renderTournamentDetailRealtime();
+        e.target.reset();
+        document.getElementById("tMaxPlayers").value = 16;
+        if (document.getElementById("tPaidType")) {
+          document.getElementById("tPaidType").value = "free";
+          document.getElementById("paidFields")?.classList.add("hidden");
+        }
+      } finally {
+        hideLoader();
+      }
+    });
+
+    // Show/hide paid fields
+    const paidTypeSelect = document.getElementById("tPaidType");
+    if (paidTypeSelect) {
+      paidTypeSelect.addEventListener("change", (e) => {
+        const v = e.target.value;
+        document.getElementById("paidFields")?.classList.toggle("hidden", v === "free");
+      });
+    }
+
+    // ===== Auth state listener =====
     onAuthStateChanged(auth, async (user) => {
       showLoader();
       try {
@@ -1964,16 +2199,17 @@
 
         if (mode === "organiser") {
           publicSection.classList.add("hidden");
-
           if (!currentUser) {
             heroSection?.classList.remove("hidden");
             authSection.classList.remove("hidden");
             organiserSection.classList.add("hidden");
+            organiserSectionPlaceholder.classList.remove("hidden");
             logoutBtn.classList.add("hidden");
           } else {
-            heroSection?.classList.add("hidden");
-            authSection.classList.add("hidden");
+            heroSection?.classList.remove("hidden");
+            authSection.classList.remove("hidden");
             organiserSection.classList.remove("hidden");
+            organiserSectionPlaceholder.classList.add("hidden");
             logoutBtn.classList.remove("hidden");
             await loadTournamentsForUser(currentUser.uid);
           }
@@ -1981,6 +2217,7 @@
           heroSection?.classList.add("hidden");
           authSection.classList.add("hidden");
           organiserSection.classList.add("hidden");
+          organiserSectionPlaceholder.classList.add("hidden");
           logoutBtn.classList.add("hidden");
           publicSection.classList.remove("hidden");
 
@@ -1996,8 +2233,6 @@
         hideLoader();
       }
     });
-
-    setAuthMode("login");
   </script>
 </body>
 </html>
