@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>PesPagol Tournament Viewer</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <!-- Tailwind CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              100: "#E0F2FE",
+              200: "#BAE6FD",
+              300: "#7DD3FC",
+              400: "#22D3EE",
+            },
+          },
+          boxShadow: {
+            "brand-glow": "0 0 35px rgba(34,211,238,0.35)",
+          },
+        },
+      },
+    };
+  </script>
+
+  <!-- Firebase (same config as index.html) -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+
+  <style>
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background:
+        radial-gradient(circle at top left, rgba(34,211,238,0.15), transparent 55%),
+        radial-gradient(circle at bottom right, rgba(56,189,248,0.12), transparent 55%),
+        #020617;
+    }
+  </style>
+</head>
+
+<body class="min-h-screen text-slate-100">
+  <div class="min-h-screen flex flex-col">
+    <!-- Header -->
+    <header class="border-b border-slate-800/60 bg-slate-950/60 backdrop-blur sticky top-0 z-20">
+      <div class="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <div class="h-9 w-9 rounded-xl bg-cyan-400/10 border border-cyan-400/40 flex items-center justify-center shadow-brand-glow">
+            <span class="text-cyan-300 font-semibold text-lg">P</span>
+          </div>
+          <div>
+            <h1 class="text-lg font-semibold tracking-tight">
+              PesPagol <span class="text-cyan-300">Fixtures</span>
+            </h1>
+            <p class="text-xs text-slate-400 -mt-0.5">
+              Public tournament schedule
+            </p>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- Main -->
+    <main class="flex-1">
+      <div class="max-w-5xl mx-auto px-4 py-6 md:py-8 space-y-4">
+        <!-- Status -->
+        <div id="statusBox" class="hidden rounded-xl border border-red-400/40 bg-red-500/10 text-red-100 px-4 py-3 text-sm"></div>
+
+        <!-- Tournament header -->
+        <section class="rounded-2xl bg-slate-900/70 border border-slate-700/80 shadow-xl shadow-cyan-500/5 p-4 sm:p-5">
+          <div class="flex flex-wrap gap-3 items-center justify-between">
+            <div>
+              <h2 id="tournamentName" class="text-base sm:text-lg font-semibold">
+                Loading tournament...
+              </h2>
+              <p id="tournamentMeta" class="text-xs text-slate-400 mt-1">
+                Please wait
+              </p>
+            </div>
+            <div class="text-xs text-slate-400">
+              Tournament ID:
+              <span id="tournamentIdText" class="text-cyan-300 font-mono"></span>
+            </div>
+          </div>
+        </section>
+
+        <!-- Teams -->
+        <section class="rounded-2xl bg-slate-900/70 border border-slate-700/80 shadow-xl shadow-cyan-500/5 p-4 sm:p-5">
+          <h3 class="text-sm sm:text-base font-semibold mb-2">
+            Teams
+          </h3>
+          <p id="teamsEmptyMsg" class="text-xs text-slate-400 mb-2"></p>
+          <div id="teamsPillBox" class="flex flex-wrap gap-2 text-xs">
+            <!-- Team pills -->
+          </div>
+        </section>
+
+        <!-- Fixtures -->
+        <section class="rounded-2xl bg-slate-900/70 border border-slate-700/80 shadow-xl shadow-cyan-500/5 p-4 sm:p-5">
+          <div class="flex items-center justify-between mb-3">
+            <h3 class="text-sm sm:text-base font-semibold">
+              Fixtures
+            </h3>
+            <span id="fixtureCountViewer" class="text-[11px] text-slate-400">
+              Loading...
+            </span>
+          </div>
+
+          <div class="border border-slate-800/80 rounded-xl overflow-hidden bg-slate-950/60">
+            <div class="overflow-x-auto">
+              <table class="min-w-full text-xs">
+                <thead class="bg-slate-900/80 text-slate-300 text-[11px] uppercase tracking-wide">
+                  <tr>
+                    <th class="px-3 py-2 text-left">Match</th>
+                    <th class="px-3 py-2 text-left">Team A</th>
+                    <th class="px-3 py-2 text-left">Team B</th>
+                    <th class="px-3 py-2 text-left">Date/Time</th>
+                    <th class="px-3 py-2 text-left">Status</th>
+                  </tr>
+                </thead>
+                <tbody id="fixturesBodyViewer" class="divide-y divide-slate-800/80">
+                  <!-- Fixtures go here -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <p class="mt-2 text-[11px] text-slate-400">
+            If fixtures look empty, please contact the tournament organizer to ensure the schedule has been published.
+          </p>
+        </section>
+      </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="border-t border-slate-800/60 bg-slate-950/60 text-[11px] text-slate-500">
+      <div class="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">
+        <span>PesPagol Tournament Viewer</span>
+        <span id="yearSpanViewer"></span>
+      </div>
+    </footer>
+  </div>
+
+  <script>
+    // =========================
+    //  Firebase Configuration
+    // =========================
+    // Use the SAME config as in index.html
+   const firebaseConfig = {
+  apiKey: "AIzaSyBJmw5rvmN3DrDBUveGZlqHU3j-xmjKYSI",
+  authDomain: "pes-tournament-e2a1a.firebaseapp.com",
+  databaseURL: "https://pes-tournament-e2a1a-default-rtdb.firebaseio.com",
+  projectId: "pes-tournament-e2a1a",
+  storageBucket: "pes-tournament-e2a1a.firebasestorage.app",
+  messagingSenderId: "966089960191",
+  appId: "1:966089960191:web:bb61b49290e09585b27aca",
+  measurementId: "G-YDWWJRZCNR"
+};
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    // =========================
+    //  DOM
+    // =========================
+    const statusBox = document.getElementById("statusBox");
+    const yearSpanViewer = document.getElementById("yearSpanViewer");
+    const tournamentNameEl = document.getElementById("tournamentName");
+    const tournamentMetaEl = document.getElementById("tournamentMeta");
+    const tournamentIdText = document.getElementById("tournamentIdText");
+    const teamsPillBox = document.getElementById("teamsPillBox");
+    const teamsEmptyMsg = document.getElementById("teamsEmptyMsg");
+    const fixturesBodyViewer = document.getElementById("fixturesBodyViewer");
+    const fixtureCountViewer = document.getElementById("fixtureCountViewer");
+
+    yearSpanViewer.textContent = `© ${new Date().getFullYear()}`;
+
+    function showError(msg) {
+      statusBox.textContent = msg;
+      statusBox.classList.remove("hidden");
+    }
+
+    function getQueryParam(name) {
+      const params = new URLSearchParams(window.location.search);
+      return params.get(name);
+    }
+
+    function renderTeams(teams) {
+      teamsPillBox.innerHTML = "";
+      if (!teams || teams.length === 0) {
+        teamsEmptyMsg.textContent = "No teams found. The tournament may not be configured yet.";
+        return;
+      }
+      teamsEmptyMsg.textContent = "";
+      teams.forEach((t) => {
+        const span = document.createElement("span");
+        span.className = "px-3 py-1 rounded-full bg-slate-800/90 border border-slate-600/70 text-slate-100";
+        span.textContent = t;
+        teamsPillBox.appendChild(span);
+      });
+    }
+
+    function renderFixtures(fixtures) {
+      fixturesBodyViewer.innerHTML = "";
+      if (!fixtures || fixtures.length === 0) {
+        fixtureCountViewer.textContent = "No fixtures published";
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td colspan="5" class="px-3 py-4 text-center text-[11px] text-slate-400">
+            No fixtures published yet. Please check back later.
+          </td>
+        `;
+        fixturesBodyViewer.appendChild(tr);
+        return;
+      }
+
+      fixtureCountViewer.textContent = `${fixtures.length} matches`;
+
+      fixtures.forEach((fx, idx) => {
+        const tr = document.createElement("tr");
+        tr.className = "hover:bg-slate-900/60";
+        tr.innerHTML = `
+          <td class="px-3 py-2 whitespace-nowrap">#${idx + 1}</td>
+          <td class="px-3 py-2 whitespace-nowrap">${fx.teamA}</td>
+          <td class="px-3 py-2 whitespace-nowrap">${fx.teamB}</td>
+          <td class="px-3 py-2 whitespace-nowrap text-slate-300 text-[11px]">${fx.datetime || "TBD"}</td>
+          <td class="px-3 py-2 whitespace-nowrap text-[11px] text-slate-400">${fx.status || "Scheduled"}</td>
+        `;
+        fixturesBodyViewer.appendChild(tr);
+      });
+    }
+
+    function loadTournament() {
+      const tid = getQueryParam("t");
+      if (!tid) {
+        showError("No tournament ID provided in the URL.");
+        tournamentNameEl.textContent = "Tournament not found";
+        tournamentMetaEl.textContent = "Please check the link with the organizer.";
+        fixtureCountViewer.textContent = "No data";
+        return;
+      }
+
+      tournamentIdText.textContent = tid;
+
+      db.ref(`tournaments/${tid}`)
+        .once("value")
+        .then((snapshot) => {
+          const data = snapshot.val();
+          if (!data) {
+            showError("This tournament ID does not exist or has been removed.");
+            tournamentNameEl.textContent = "Tournament not found";
+            tournamentMetaEl.textContent = "Please check the link with the organizer.";
+            fixtureCountViewer.textContent = "No data";
+            return;
+          }
+
+          tournamentNameEl.textContent = data.name || "Unnamed Tournament";
+
+          const format = (data.format || "league").toUpperCase();
+          const startDateText = data.startDate ? `Starts from ${data.startDate}` : "Start date: To be announced";
+          tournamentMetaEl.textContent = `${format} • ${startDateText}`;
+
+          renderTeams(data.teams || []);
+          renderFixtures(data.fixtures || []);
+        })
+        .catch((err) => {
+          console.error(err);
+          showError("Error loading tournament: " + err.message);
+          tournamentNameEl.textContent = "Error loading tournament";
+          tournamentMetaEl.textContent = "Please try again later.";
+        });
+    }
+
+    loadTournament();
+  </script>
+</body>
+</html>
